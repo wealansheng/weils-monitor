@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["@dcloudio/types"]
+  },
+  "include": ["src", "tsup.config.ts"]
+}

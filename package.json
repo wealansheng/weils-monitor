@@ -1,0 +1,20 @@
+{
+  "name": "cy-monitor",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r run dev",
+    "typecheck": "pnpm -r run typecheck",
+    "verify:exports": "node scripts/check-exports.mjs",
+    "clean": "node scripts/clean.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

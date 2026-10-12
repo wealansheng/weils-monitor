@@ -1,0 +1,6 @@
+{
+  // 仓库级类型检查：覆盖所有 package 源码与构建配置。
+  // 各 package 的构建由 tsup 负责（见 packages/*/tsup.config.ts）。
+  "extends": "./tsconfig.base.json",
+  "include": ["packages/*/src", "packages/*/tsup.config.ts"]
+}
