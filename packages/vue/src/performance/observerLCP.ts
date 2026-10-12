@@ -1,0 +1,1 @@
+// 最大内容绘制时间 (Largest Contentful Paint, LCP)，标准 <= 2.5s

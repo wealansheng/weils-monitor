@@ -1,0 +1,1 @@
+// 首次字节时间 (Time to First Byte, TTFB)，标准 <= 100ms

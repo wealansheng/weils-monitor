@@ -1,0 +1,1 @@
+// 首次内容绘制时间 (First Contentful Paint, FCP)，标准 <= 1s

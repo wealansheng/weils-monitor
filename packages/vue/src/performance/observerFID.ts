@@ -1,0 +1,1 @@
+// 首次输入延迟 (First Input Delay, FID)，标准 <= 100ms
