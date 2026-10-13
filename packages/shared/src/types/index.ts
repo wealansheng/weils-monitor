@@ -118,6 +118,31 @@ export interface ReportData {
   // startTime?: string,
 }
 
+export interface CLSReportData {
+  type: string;
+  subType: string;
+  name: string;
+  value: number;
+  rating: string;
+  startTime: number;
+}
+export interface INPReportData {
+  type: string;
+  subType: string;
+  name: string;
+  value: number;
+  rating: string;
+  startTime: number;
+}
+export interface TTFBReportData {
+  type: string;
+  subType: string;
+  name: string;
+  value: number;
+  rating: number;
+  startTime: number;
+}
+
 export interface InitOptions {
   url: string;
   projectName: string;
@@ -127,6 +152,10 @@ export interface InitOptions {
   batchSize: number;
 }
 
+export type Rating = `good` | `needs-improvement` | `poor`
+
+
+// 扩展类型
 
 export interface XHRWithMonitor extends XMLHttpRequest {
   url: string | URL;
@@ -134,4 +163,33 @@ export interface XHRWithMonitor extends XMLHttpRequest {
   startTime: number;
   endTime: number;
   duration: number;
+}
+
+export interface LayoutShiftEntry extends PerformanceEntry {
+  value: number;
+  hadRecentInput: boolean;
+}
+
+export interface INPEntry extends PerformanceEntry {
+  interactionId: number;
+  duration: number;
+}
+
+export interface NavigationTimingEntry extends PerformanceEntry {
+  responseStart: number;
+  requestStart: number;
+  domainLookupStart: number;
+  domainLookupEnd: number;
+  connectStart: number;
+  connectEnd: number;
+  redirectStart: number;
+  redirectEnd: number;
+  fetchStart: number;
+  type: string;
+}
+
+export interface ResourceTimingEntry extends PerformanceEntry {
+  responseStart: number;
+  requestStart: number;
+  initiatorType: string;
 }

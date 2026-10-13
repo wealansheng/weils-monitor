@@ -7,5 +7,7 @@ export * from './observerFCP'
 export * from './observerLCP'
 export * from './observerLoad'
 export * from './observerPaint'
+
+export * from './observerCLS'
 // TODO
 // export * from './observerTTFB'

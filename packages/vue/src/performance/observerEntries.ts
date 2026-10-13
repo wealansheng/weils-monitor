@@ -41,7 +41,7 @@ export const observerEvent = (): void => {
         resourceSize: entry.decodedBodySize,
         startTime: performance.now(),
       };
-
+      console.log(reportData)
     //   lazyReportBatch(reportData);
     }
   };
