@@ -1,24 +1,20 @@
+/// <reference path="./global.d.ts" />
+
 import * as performance from './performance';
 import * as error from './error';
 import * as behavior from './behavior';
 
 import { setConfig } from '@weils-monitor/utils';
 import type { InitOptions, VueReportData } from '@weils-monitor/shared';
+import type { App, ComponentPublicInstance } from 'vue';
 
 // 挂载全局对象
 window.__WEILS_MONITOR_SDK__ = {
   version: '0.0.1',
 };
 
-// Vue 插件类型（简化版，避免依赖 vue 包)
-interface VueConstructor {
-  config: {
-    errorHandler?: (err: Error, vm: unknown, info: string) => void;
-  };
-}
-
 // 监控vue错误
-export const install = (Vue: VueConstructor, options: Partial<InitOptions>): void => {
+export const install = (Vue: App, options: Partial<InitOptions>): void => {
   if (window.__WEILS_MONITOR_SDK__.vue) return;
   window.__WEILS_MONITOR_SDK__.vue = true;
 
@@ -28,15 +24,15 @@ export const install = (Vue: VueConstructor, options: Partial<InitOptions>): voi
 
   Vue.config.errorHandler = function (
     this: unknown,
-    err: Error,
-    vm: unknown,
+    err: unknown,
+    vm: ComponentPublicInstance | null,
     info: string,
   ): void {
     const reportData: VueReportData = {
       type: 'error',
       subType: 'vue',
       info,
-      error: err.stack,
+      error: err instanceof Error ? err.stack : String(err),
       startTime: window.performance.now(),
       pageURL: window.location.href,
     }

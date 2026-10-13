@@ -1,11 +1,14 @@
 {
-  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
   "linked": [],
   "access": "public",
-  "baseBranch": "master",
+  "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": []
+  "ignore": ["@weils-monitor/example-vue"],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

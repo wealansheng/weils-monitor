@@ -7,15 +7,11 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true,
-      "dependsOn": ["^build"]
+      "persistent": true
     },
     "typecheck": {
       "dependsOn": ["^build"]
     },
-    "lint": {},
-    "test": {
-      "dependsOn": ["build"]
-    }
+    "lint": {}
   }
 }

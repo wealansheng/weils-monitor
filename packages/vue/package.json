@@ -1,6 +1,7 @@
 {
   "name": "@weils-monitor/vue",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "description": "Vue 3 插件",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -13,13 +14,13 @@
     }
   },
   "files": ["dist"],
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*",
@@ -27,5 +28,10 @@
   },
   "peerDependencies": {
     "vue": "^3.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vue": "^3.5.0"
   }
 }

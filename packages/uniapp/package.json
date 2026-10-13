@@ -1,6 +1,7 @@
 {
   "name": "@weils-monitor/uniapp",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "description": "uni-app 适配层",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -12,23 +13,24 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
-  "publishConfig": {
-    "access": "public"
-  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*",
     "@weils-monitor/utils": "workspace:*"
   },
-  "peerDependencies": {
-    "vue": "^2.6.0 || ^3.0.0"
-  },
   "devDependencies": {
-    "@dcloudio/types": "^3.4.0"
+    "@dcloudio/types": "^3.4.32",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
   }
 }

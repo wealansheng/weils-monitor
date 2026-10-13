@@ -1,35 +1,37 @@
 {
   "name": "@weils-monitor/nuxt",
-  "version": "0.0.0",
+  "version": "0.0.1",
+  "description": "Nuxt 3 模块",
   "type": "module",
-  "main": "./dist/module.mjs",
+  "main": "./dist/module.cjs",
   "module": "./dist/module.mjs",
   "types": "./dist/module.d.ts",
   "exports": {
     ".": {
       "types": "./dist/module.d.ts",
-      "import": "./dist/module.mjs"
+      "import": "./dist/module.mjs",
+      "require": "./dist/module.cjs"
     }
   },
   "files": ["dist"],
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*",
-    "@weils-monitor/utils": "workspace:*"
+    "@weils-monitor/utils": "workspace:*",
+    "@weils-monitor/vue": "workspace:*"
   },
   "peerDependencies": {
     "nuxt": "^3.0.0"
   },
   "devDependencies": {
-    "@nuxt/kit": "^3.0.0",
-    "@nuxt/schema": "^3.0.0",
-    "@types/node": "^22.10.0"
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
   }
 }

@@ -46,6 +46,7 @@ export const error = () => {
             startTime: performance.now(),
         };
 
+        console.log(reportData);
         // lazyReportBatch(reportData);
     };
 
@@ -60,6 +61,7 @@ export const error = () => {
             startTime: e.timeStamp,
         };
 
+        console.log(reportData);
         // lazyReportBatch(reportData);
     }, true);
 }

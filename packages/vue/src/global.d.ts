@@ -1,5 +1,4 @@
-// src/types/global.d.ts
-export {};  // 让文件成为模块
+import type { WeilsMonitorSDK } from './types';
 
 declare global {
   interface Window {

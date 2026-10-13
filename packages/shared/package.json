@@ -1,7 +1,7 @@
 {
   "name": "@weils-monitor/shared",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.0.1",
+  "description": "跨端共享的类型与常量",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -18,5 +18,12 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
   }
 }

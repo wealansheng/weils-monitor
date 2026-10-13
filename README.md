@@ -11,6 +11,7 @@
 | `packages/vue` | Vue 3 插件（`@weils-monitor/vue`） |
 | `packages/nuxt` | Nuxt 3 模块（`@weils-monitor/nuxt`） |
 | `packages/uniapp` | uni-app 适配层（`@weils-monitor/uniapp`） |
+| `example/vue` | `@weils-monitor/vue` 的 Vue 3 + Vite 交互演示 |
 | `scripts/` | 仓库维护脚本（清理产物、校验入口声明） |
 
 ## 环境要求
@@ -28,6 +29,7 @@ pnpm verify:exports   # 校验 package.json 入口声明指向真实产物
 pnpm clean            # 清理各 package 的 dist
 pnpm changeset        # 生成变更记录
 pnpm version-packages # 依据 changeset 升级版本号
+pnpm --filter @weils-monitor/example dev # 运行 Vue 交互演示
 ```
 
 ## 构建约定

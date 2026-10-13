@@ -1,7 +1,7 @@
 {
   "name": "@weils-monitor/utils",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.0.1",
+  "description": "通用工具函数",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -19,7 +19,14 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
   }
 }

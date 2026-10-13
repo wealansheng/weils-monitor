@@ -12,7 +12,7 @@ export const observerLCP = () => {
             const reportData: ReportData = {
                 ...json,
                 type: 'performance',
-                subType: entry.name,
+                subType: 'largest-contentful-paint',
                 pageURL: window.location.href,
             }
             console.log(reportData)

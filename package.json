@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
+    "dev:vue": "pnpm --filter @weils-monitor/example-vue dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
