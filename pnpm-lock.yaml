@@ -26,6 +26,9 @@ importers:
 
   example/vue:
     dependencies:
+      '@fontsource/zcool-xiaowei':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@weils-monitor/vue':
         specifier: workspace:*
         version: link:../../packages/vue
@@ -809,6 +812,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource/zcool-xiaowei@5.3.0':
+    resolution: {integrity: sha512-iRuUPl9ONFbYzi6JcEshpE4VedINyzQ4hv0Z5XEt0cB0pMPiQeqc2Qvv1NwJCNzkPwG02VCdcO+cF2K8ylYn2A==}
 
   '@inquirer/external-editor@1.0.3':
     resolution: {integrity: sha512-RWbSrDiYmO4LbejWY7ttpxczuwQyZLBUyygsA9Nsv95hpzUWwnNTVQmAq3xuh7vNwCp07UTmE5i11XAEExx4RA==}
@@ -4765,6 +4771,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@fontsource/zcool-xiaowei@5.3.0': {}
 
   '@inquirer/external-editor@1.0.3(@types/node@22.20.5)':
     dependencies:

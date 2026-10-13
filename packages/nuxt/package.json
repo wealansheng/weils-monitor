@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/nuxt",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Nuxt 3 模块",
   "type": "module",
   "main": "./dist/module.cjs",
@@ -13,7 +13,9 @@
       "require": "./dist/module.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
