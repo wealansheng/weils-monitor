@@ -6,11 +6,11 @@
 
 | 路径 | 说明 |
 | --- | --- |
-| `packages/shared` | 跨端共享的类型与常量（`@cy-monitor/shared`） |
-| `packages/utils` | 通用工具函数（`@cy-monitor/utils`） |
-| `packages/vue` | Vue 3 插件（`@cy-monitor/vue`） |
-| `packages/nuxt` | Nuxt 3 模块（`@cy-monitor/nuxt`） |
-| `packages/uniapp` | uni-app 适配层（`@cy-monitor/uniapp`） |
+| `packages/shared` | 跨端共享的类型与常量（`@weils-monitor/shared`） |
+| `packages/utils` | 通用工具函数（`@weils-monitor/utils`） |
+| `packages/vue` | Vue 3 插件（`@weils-monitor/vue`） |
+| `packages/nuxt` | Nuxt 3 模块（`@weils-monitor/nuxt`） |
+| `packages/uniapp` | uni-app 适配层（`@weils-monitor/uniapp`） |
 | `scripts/` | 仓库维护脚本（清理产物、校验入口声明） |
 
 ## 环境要求

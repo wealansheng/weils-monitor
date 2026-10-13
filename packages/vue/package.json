@@ -1,5 +1,5 @@
 {
-  "name": "@cy-monitor/vue",
+  "name": "@weils-monitor/vue",
   "version": "0.0.0",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -22,8 +22,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cy-monitor/shared": "workspace:*",
-    "@cy-monitor/utils": "workspace:*"
+    "@weils-monitor/shared": "workspace:*",
+    "@weils-monitor/utils": "workspace:*"
   },
   "peerDependencies": {
     "vue": "^3.0.0"

@@ -1,1 +1,0 @@
-// 累积布局偏移 (Cumulative Layout Shift, CLS)，标准 < 0.1

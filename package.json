@@ -1,10 +1,11 @@
 {
-  "name": "cy-monitor",
+  "name": "weils-monitor",
   "private": true,
   "scripts": {
-    "build": "pnpm -r run build",
-    "dev": "pnpm -r run dev",
-    "typecheck": "pnpm -r run typecheck",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
     "verify:exports": "node scripts/check-exports.mjs",
     "clean": "node scripts/clean.mjs",
     "changeset": "changeset",
@@ -15,6 +16,7 @@
     "@changesets/cli": "^2.27.0",
     "@types/node": "^22.10.0",
     "tsup": "^8.0.0",
+    "turbo": "^2.11.7",
     "typescript": "^5.4.0"
   },
   "packageManager": "pnpm@9.0.0"

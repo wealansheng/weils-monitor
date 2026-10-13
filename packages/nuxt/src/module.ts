@@ -1,11 +1,11 @@
 import { defineNuxtModule } from '@nuxt/kit'
-import type { MonitorOptions } from '@cy-monitor/shared'
+import type { MonitorOptions } from '@weils-monitor/shared'
 
 export type ModuleOptions = MonitorOptions
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: '@cy-monitor/nuxt',
+    name: '@weils-monitor/nuxt',
     configKey: 'cyMonitor',
   },
   defaults: {

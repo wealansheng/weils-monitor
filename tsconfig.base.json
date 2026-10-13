@@ -11,11 +11,11 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "paths": {
-      "@cy-monitor/shared": ["./packages/shared/src"],
-      "@cy-monitor/utils": ["./packages/utils/src"],
-      "@cy-monitor/vue": ["./packages/vue/src"],
-      "@cy-monitor/nuxt": ["./packages/nuxt/src"],
-      "@cy-monitor/uniapp": ["./packages/uniapp/src"]
+      "@weils-monitor/shared": ["./packages/shared/src"],
+      "@weils-monitor/utils": ["./packages/utils/src"],
+      "@weils-monitor/vue": ["./packages/vue/src"],
+      "@weils-monitor/nuxt": ["./packages/nuxt/src"],
+      "@weils-monitor/uniapp": ["./packages/uniapp/src"]
     }
   },
   "exclude": ["node_modules", "dist"]

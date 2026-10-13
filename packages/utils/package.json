@@ -1,5 +1,5 @@
 {
-  "name": "@cy-monitor/utils",
+  "name": "@weils-monitor/utils",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -20,6 +20,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cy-monitor/shared": "workspace:*"
+    "@weils-monitor/shared": "workspace:*"
   }
 }

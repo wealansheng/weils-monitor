@@ -1,6 +1,14 @@
-export interface MonitorOptions {
-  dsn: string
-  env?: string
-}
+import {
+    EntriesReportData,
+    LoadReportData,
+    AssetsErrorReportData,
+    JSErrorReportData,
+    PromiseErrorReportData,
+    ClickReportData,
+    RouteReportData,
+    PVReportData,
+    HTTPReportData,
+    XHRWithMonitor
+} from './types/index'
 
-export type MonitorLevel = 'debug' | 'info' | 'warn' | 'error'
+export type QueueReportData = EntriesReportData | LoadReportData | AssetsErrorReportData | JSErrorReportData | PromiseErrorReportData | ClickReportData | RouteReportData | PVReportData | HTTPReportData | XHRWithMonitor
