@@ -1,70 +1,97 @@
-import type { NavigationTimingEntry, ResourceTimingEntry, TTFBReportData } from '@weils-monitor/shared'
+import type { TTFBReportData } from '@weils-monitor/shared'
+import { getTTFBRating } from '@weils-monitor/utils'
 
-
-// 首次字节时间 (Time to First Byte, TTFB)，标准 <= 100ms
-// 使用核心主文档标准公式
-
-/**
- * 计算页面主文档的 TTFB
- * 通过 navigation timing entry 获取
- */
-const getNavigationTTFB = (): number => {
-  const [nav] = performance.getEntriesByType('navigation') as NavigationTimingEntry[];
-  if (!nav) return 0;
-
-  // TTFB = responseStart - startTime
-  // startTime 对 navigation 来说通常是 0
-  return nav.responseStart - nav.startTime;
+const getNavigationEntry = (): PerformanceNavigationTiming | undefined => {
+  const [entry] = window.performance.getEntriesByType('navigation')
+  return entry as PerformanceNavigationTiming | undefined
 }
 
-/**
- * 计算单个资源的 TTFB
- */
-function getResourceTTFB(entry: ResourceTimingEntry): number {
-  return entry.responseStart - entry.startTime;
-}
-
-// 上报
-/**
- * 上报页面主文档的 TTFB
- */
+/** 监控页面主文档的首次字节时间，并返回清理函数。 */
 export function observeTTFB(
   callback: (reportData: TTFBReportData) => void,
 ): () => void {
-  if (!('PerformanceObserver' in window)) {
-    console.warn('浏览器不支持 PerformanceObserver，无法监控 TTFB');
-    return () => {};
+  if (typeof window === 'undefined' || !('performance' in window)) {
+    console.warn('当前环境不支持 Performance API，无法监控 TTFB')
+    return () => {}
   }
 
-  let reported = false;
+  let active = true
+  let reported = false
+  let observer: PerformanceObserver | null = null
+  let loadHandler: (() => void) | null = null
 
-  // 监听 navigation 完成
-  const observer = new PerformanceObserver((list) => {
-    const entries = list.getEntries() as NavigationTimingEntry[];
+  const stopListening = (): void => {
+    observer?.disconnect()
+    observer = null
 
-    for (const entry of entries) {
-      // 只处理主文档导航（type 可能是 'navigate' / 'reload' / 'back_forward'）
-      if (entry.entryType !== 'navigation') continue;
-
-      const ttfb = entry.responseStart - entry.startTime;
-
-      const reportData: TTFBReportData = {
-        type: 'performance',
-        subType: 'ttfb',
-        name: 'TTFB',
-        value: ttfb,
-        rating: ttfb,
-        startTime: entry.startTime,
-      };
-
-      callback(reportData);
-      reported = true;
+    if (loadHandler) {
+      window.removeEventListener('load', loadHandler)
+      loadHandler = null
     }
+  }
 
-    if (reported) observer.disconnect();
-  });
+  const report = (entry: PerformanceNavigationTiming | undefined): boolean => {
+    if (!active || reported || !entry || entry.responseStart <= 0) return false
 
-  observer.observe({ type: 'navigation', buffered: true });
+    reported = true
+    stopListening()
 
-  return () => observer.disconnect();
+    const value = Math.max(0, entry.responseStart - entry.startTime)
+    callback({
+      type: 'performance',
+      subType: 'ttfb',
+      name: 'TTFB',
+      value,
+      rating: getTTFBRating(value),
+      startTime: entry.startTime,
+      pageURL: window.location.href,
+    })
+
+    return true
+  }
+
+  const cleanup = (): void => {
+    active = false
+    stopListening()
+  }
+
+  // SDK 延迟初始化时，navigation entry 通常已经存在，可直接上报。
+  if (report(getNavigationEntry())) return cleanup
+
+  if ('PerformanceObserver' in window) {
+    const supportedEntryTypes = PerformanceObserver.supportedEntryTypes
+    const canObserveNavigation =
+      !supportedEntryTypes || supportedEntryTypes.includes('navigation')
+
+    if (canObserveNavigation) {
+      try {
+        observer = new PerformanceObserver((list) => {
+          const entry = list
+            .getEntries()
+            .find(({ entryType }) => entryType === 'navigation') as
+            | PerformanceNavigationTiming
+            | undefined
+
+          report(entry)
+        })
+        observer.observe({ type: 'navigation', buffered: true })
+      } catch {
+        observer?.disconnect()
+        observer = null
+      }
+    }
+  }
+
+  // 某些浏览器不能观察 navigation，但仍可在 load 后读取 Navigation Timing。
+  loadHandler = (): void => {
+    report(getNavigationEntry())
+  }
+
+  if (document.readyState === 'complete') {
+    queueMicrotask(loadHandler)
+  } else {
+    window.addEventListener('load', loadHandler, { once: true })
+  }
+
+  return cleanup
 }

@@ -16,20 +16,23 @@
 
 ## 环境要求
 
-- Node.js >= 18（当前开发环境为 v22）
+- Node.js ^20.19.0 或 >= 22.12.0（与当前锁定的 Nuxt 版本要求一致）
 - pnpm 9（根 `package.json` 的 `packageManager` 已锁定为 `pnpm@9.0.0`，新版 pnpm 会自动切换到该版本）
 
 ## 常用命令
 
 ```bash
 pnpm install          # 安装 workspace 依赖
+pnpm dev              # 监听全部 packages（不启动 example）
+pnpm dev:vue          # 监听 Vue 包并启动 Vue 示例
+pnpm dev:nuxt         # 仅监听 Nuxt 包
+pnpm dev:uniapp       # 仅监听 uni-app 包
 pnpm typecheck        # 全量类型检查（tsc --noEmit）
 pnpm build            # 构建全部 package（tsup）
 pnpm verify:exports   # 校验 package.json 入口声明指向真实产物
 pnpm clean            # 清理各 package 的 dist
 pnpm changeset        # 生成变更记录
 pnpm version-packages # 依据 changeset 升级版本号
-pnpm --filter @weils-monitor/example dev # 运行 Vue 交互演示
 ```
 
 ## 构建约定

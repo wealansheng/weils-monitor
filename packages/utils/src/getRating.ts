@@ -11,3 +11,9 @@ export const getINPRating = (value: number): Rating => {
   if (value <= 500) return 'needs-improvement'; // 200ms - 500ms 需要改进
   return 'poor';                           // > 500ms 为差
 }
+
+export const getTTFBRating = (value: number): Rating => {
+  if (value <= 800) return 'good'
+  if (value <= 1800) return 'needs-improvement'
+  return 'poor'
+}

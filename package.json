@@ -2,9 +2,13 @@
   "name": "weils-monitor",
   "private": true,
   "scripts": {
-    "dev": "turbo run dev",
-    "dev:vue": "pnpm --filter @weils-monitor/example-vue dev",
-    "build": "turbo run build --filter='./packages/*'",
+    "dev": "turbo run dev --filter=./packages/*",
+    "dev:shared": "turbo run dev --filter=@weils-monitor/shared",
+    "dev:utils": "turbo run dev --filter=@weils-monitor/utils",
+    "dev:vue": "turbo run dev --filter=@weils-monitor/vue --filter=@weils-monitor/example-vue",
+    "dev:nuxt": "turbo run dev --filter=@weils-monitor/nuxt",
+    "dev:uniapp": "turbo run dev --filter=@weils-monitor/uniapp",
+    "build": "turbo run build --filter=./packages/*",
     "build:all": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
@@ -12,7 +16,7 @@
     "clean": "node scripts/clean.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && pnpm verify:exports && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
@@ -21,5 +25,9 @@
     "turbo": "^2.11.7",
     "typescript": "^5.4.0"
   },
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0",
+    "pnpm": ">=9 <10"
+  }
 }

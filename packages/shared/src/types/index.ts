@@ -139,8 +139,9 @@ export interface TTFBReportData {
   subType: string;
   name: string;
   value: number;
-  rating: number;
+  rating: Rating;
   startTime: number;
+  pageURL: string;
 }
 
 export interface InitOptions {

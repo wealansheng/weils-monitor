@@ -48,6 +48,9 @@ importers:
 
   packages/nuxt:
     dependencies:
+      '@nuxt/kit':
+        specifier: ^3.0.0
+        version: 3.21.11(magicast@0.5.5)
       '@weils-monitor/shared':
         specifier: workspace:*
         version: link:../shared

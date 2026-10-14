@@ -3,14 +3,13 @@
   "version": "1.0.0",
   "description": "Nuxt 3 模块",
   "type": "module",
-  "main": "./dist/module.cjs",
+  "main": "./dist/module.mjs",
   "module": "./dist/module.mjs",
   "types": "./dist/module.d.ts",
   "exports": {
     ".": {
       "types": "./dist/module.d.ts",
-      "import": "./dist/module.mjs",
-      "require": "./dist/module.cjs"
+      "import": "./dist/module.mjs"
     }
   },
   "files": [
@@ -25,6 +24,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@nuxt/kit": "^3.0.0",
     "@weils-monitor/shared": "workspace:*",
     "@weils-monitor/utils": "workspace:*",
     "@weils-monitor/vue": "workspace:*"
