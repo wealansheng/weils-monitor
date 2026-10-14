@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/uniapp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "uni-app 适配层",
   "type": "module",
   "main": "./dist/index.cjs",

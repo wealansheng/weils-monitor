@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/nuxt",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Nuxt 3 模块",
   "type": "module",
   "main": "./dist/module.mjs",
