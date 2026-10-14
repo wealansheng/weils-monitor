@@ -1,5 +1,6 @@
 import type { INPReportData, INPEntry } from "@weils-monitor/shared";
 import { getINPRating } from '@weils-monitor/utils'
+import { report } from '../report';
 
 
 // 存储每个 interactionId 对应的最长事件时长
@@ -17,7 +18,7 @@ const getINPValue = (): number => {
   return durations[index];
 }
 
-export const observerEvent = () => {
+export const observerINP = () => {
     if (!('PerformanceObserver' in window)) {
         console.warn('浏览器不支持 PerformanceObserver，无法监控 INP');
         return () => 0;
@@ -47,15 +48,13 @@ export const observerEvent = () => {
         const inpValue = getINPValue();
         if (inpValue > 0) {
             const reportData: INPReportData = {
-                type: 'performance',
-                subType: 'inp',
-                name: 'INP',
+                event_type: 'performance',
+                metric_name: 'INP',
                 value: inpValue,
                 rating: getINPRating(inpValue),
-                startTime: performance.now(),
             }
-            console.log('reportData')
-            // lazyReportBatch(reportData);
+
+            report(reportData);
         }
         }
     });

@@ -13,6 +13,7 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "verify:exports": "node scripts/check-exports.mjs",
+    "smoke:report": "node scripts/smoke-report.mjs",
     "clean": "node scripts/clean.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",

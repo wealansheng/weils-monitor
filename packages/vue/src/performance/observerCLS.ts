@@ -1,8 +1,9 @@
 // CLS（Cumulative Layout Shift，累积布局偏移）
 import type { LayoutShiftEntry } from '@weils-monitor/shared';
-import { CLSReportData } from '@weils-monitor/shared';
+import type { CLSReportData } from '@weils-monitor/shared';
 import { SESSION_WINDOW_MAX_DURATION, SESSION_WINDOW_MAX_GAP } from '@weils-monitor/shared'
 import { getRating } from '@weils-monitor/utils'
+import { report } from '../report';
 
 // 当前会话窗口状态
 let currentWindowValue = 0;
@@ -72,7 +73,7 @@ export const observerHandler = (): () => number => {
   return getCLSValue;
 }
 
-export const observeCLS = (): void => {
+export const observerCLS = (): void => {
     const getCLS = observerHandler();
 
     document.addEventListener('visibilitychange', () => {
@@ -80,15 +81,13 @@ export const observeCLS = (): void => {
             const clsValue = getCLS();
             if (clsValue > 0) {
                 const reportData: CLSReportData = {
-                    type: 'performance',
-                    subType: 'cls',
-                    name: 'CLS',
+                    event_type: 'performance',
+                    metric_name: 'CLS',
                     value: clsValue,
                     rating: getRating(clsValue),
-                    startTime: performance.now(),
                 }
-                console.log(reportData)
-            // lazyReportBatch(reportData);
+                report(reportData);
+                reported = true;
             }
         }
     });

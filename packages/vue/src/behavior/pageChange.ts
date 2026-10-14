@@ -1,47 +1,51 @@
 import type { RouteReportData } from '@weils-monitor/shared'
-import { generateUniqueId } from '@weils-monitor/utils';
-// import { lazyReportBatch } from '../report';
+import { report } from '../report'
+
+let bound = false
+
+const getRoute = (url: string = window.location.href): string => {
+  try {
+    const parsed = new URL(url, window.location.href)
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return url
+  }
+}
 
 export const pageChange = (): void => {
-  // hash 路由
-  window.addEventListener(
-    'hashchange',
-    (event: HashChangeEvent): void => {
-      console.error('hashchange', event);
+  if (bound) return
+  bound = true
 
-      const reportData: RouteReportData = {
-        from: event.oldURL,     // 原代码 form 是拼写错误
-        to: event.newURL,
-        type: 'behavior',
-        subType: 'hashchange',
-        startTime: performance.now(),
-        uuid: generateUniqueId(),
-      };
-      console.log(reportData);
-      
-      // lazyReportBatch(reportData);
-    },
-    true,
-  );
+  let previousRoute = getRoute()
 
-  // history 路由
-  window.addEventListener(
-    'popstate',
-    (event: PopStateEvent): void => {
-      console.error('popstate', event);
+  const emitRouteChange = (nextRoute: string): void => {
+    if (nextRoute === previousRoute) return
 
-      const reportData: RouteReportData = {
-        from: window.location.href,  // 见下方说明：需要靠外部变量记录 from
-        to: window.location.href,
-        type: 'behavior',
-        subType: 'popstate',
-        startTime: performance.now(),
-        uuid: generateUniqueId(),
-      };
-      console.log(reportData);
-      
-      // lazyReportBatch(reportData);
-    },
-    true,
-  );
-};
+    const reportData: RouteReportData = {
+      event_type: 'behavior',
+      action: 'route_change',
+      from_route: previousRoute,
+      to_route: nextRoute,
+      route: nextRoute.split(/[?#]/)[0],
+    }
+    previousRoute = nextRoute
+    report(reportData)
+  }
+
+  window.addEventListener('hashchange', (event: HashChangeEvent) => {
+    const oldRoute = getRoute(event.oldURL)
+    previousRoute = oldRoute
+    emitRouteChange(getRoute(event.newURL))
+  }, true)
+
+  window.addEventListener('popstate', () => emitRouteChange(getRoute()), true)
+
+  for (const method of ['pushState', 'replaceState'] as const) {
+    const original = history[method]
+    history[method] = function monitoredHistoryMethod(...args: Parameters<History[typeof method]>) {
+      const result = original.apply(this, args)
+      emitRouteChange(getRoute())
+      return result
+    }
+  }
+}

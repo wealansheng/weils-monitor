@@ -1,28 +1,35 @@
 import type { ReportData } from '@weils-monitor/shared'
+import { report } from '../report'
 
-// 最大内容绘制时间 (Largest Contentful Paint, LCP)，标准 <= 2.5s
-export const observerLCP = () => {
-    const entryHandler: PerformanceObserverCallback = (entries: PerformanceObserverEntryList, observer: PerformanceObserver) => {
-        if (observer) {
-            observer.disconnect();
-        } 
-        for (const entry of entries.getEntries()) {
-            const json = entry.toJSON();
-            console.log(json);
-            const reportData: ReportData = {
-                ...json,
-                type: 'performance',
-                subType: 'largest-contentful-paint',
-                pageURL: window.location.href,
-            }
-            console.log(reportData)
-            // 发送数据 todo;
-            // lazyReportBatch(reportData);
-        }
+export const observerLCP = (): void => {
+  if (!('PerformanceObserver' in window)) return
 
+  let latestEntry: PerformanceEntry | undefined
+  let reported = false
+
+  const observer = new PerformanceObserver((entries) => {
+    latestEntry = entries.getEntries().at(-1)
+  })
+
+  const finalize = (): void => {
+    if (reported || !latestEntry) return
+    reported = true
+    observer.disconnect()
+
+    const value = latestEntry.startTime
+    const reportData: ReportData = {
+      event_type: 'performance',
+      metric_name: 'LCP',
+      value,
+      rating: value <= 2500 ? 'good' : value <= 4000 ? 'needs-improvement' : 'poor',
+      start_time: latestEntry.startTime,
     }
-    // 统计和计算lcp的时间
-    const observer: PerformanceObserver = new PerformanceObserver(entryHandler);
-    // buffered: true 确保观察到所有paint事件
-    observer.observe({type: 'largest-contentful-paint', buffered: true});
+    report(reportData)
+  }
+
+  observer.observe({ type: 'largest-contentful-paint', buffered: true })
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') finalize()
+  }, { once: true })
+  window.addEventListener('pagehide', finalize, { once: true })
 }

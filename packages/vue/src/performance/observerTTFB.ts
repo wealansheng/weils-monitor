@@ -1,14 +1,15 @@
 import type { TTFBReportData } from '@weils-monitor/shared'
 import { getTTFBRating } from '@weils-monitor/utils'
+import { report } from '../report'
 
 const getNavigationEntry = (): PerformanceNavigationTiming | undefined => {
   const [entry] = window.performance.getEntriesByType('navigation')
   return entry as PerformanceNavigationTiming | undefined
 }
 
-/** 监控页面主文档的首次字节时间，并返回清理函数。 */
+/** 监控页面主文档的首次字节时间，并返回清理函数。回调仅用于额外消费，数据始终由 SDK 入队上报。 */
 export function observeTTFB(
-  callback: (reportData: TTFBReportData) => void,
+  callback?: (reportData: TTFBReportData) => void,
 ): () => void {
   if (typeof window === 'undefined' || !('performance' in window)) {
     console.warn('当前环境不支持 Performance API，无法监控 TTFB')
@@ -30,22 +31,23 @@ export function observeTTFB(
     }
   }
 
-  const report = (entry: PerformanceNavigationTiming | undefined): boolean => {
+  const reportEntry = (entry: PerformanceNavigationTiming | undefined): boolean => {
     if (!active || reported || !entry || entry.responseStart <= 0) return false
 
     reported = true
     stopListening()
 
     const value = Math.max(0, entry.responseStart - entry.startTime)
-    callback({
-      type: 'performance',
-      subType: 'ttfb',
-      name: 'TTFB',
+    const reportData: TTFBReportData = {
+      event_type: 'performance',
+      metric_name: 'TTFB',
       value,
       rating: getTTFBRating(value),
-      startTime: entry.startTime,
-      pageURL: window.location.href,
-    })
+      start_time: entry.startTime,
+    }
+
+    report(reportData)
+    callback?.(reportData)
 
     return true
   }
@@ -56,7 +58,7 @@ export function observeTTFB(
   }
 
   // SDK 延迟初始化时，navigation entry 通常已经存在，可直接上报。
-  if (report(getNavigationEntry())) return cleanup
+  if (reportEntry(getNavigationEntry())) return cleanup
 
   if ('PerformanceObserver' in window) {
     const supportedEntryTypes = PerformanceObserver.supportedEntryTypes
@@ -72,7 +74,7 @@ export function observeTTFB(
             | PerformanceNavigationTiming
             | undefined
 
-          report(entry)
+          reportEntry(entry)
         })
         observer.observe({ type: 'navigation', buffered: true })
       } catch {
@@ -84,7 +86,7 @@ export function observeTTFB(
 
   // 某些浏览器不能观察 navigation，但仍可在 load 后读取 Navigation Timing。
   loadHandler = (): void => {
-    report(getNavigationEntry())
+    reportEntry(getNavigationEntry())
   }
 
   if (document.readyState === 'complete') {

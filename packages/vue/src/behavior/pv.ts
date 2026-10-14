@@ -1,16 +1,14 @@
-import { generateUniqueId } from '@weils-monitor/utils';
 import type { PVReportData } from '@weils-monitor/shared'
+import { report } from '../report';
 
 export const pv = () => {
     const reportData: PVReportData = {
-        type: 'behavior',
-        subType: 'pv',
-        startTime: performance.now(),
-        pageUrl: window.location.href,
-        referror: document.referrer,
-        uuid: generateUniqueId(),
+        event_type: 'behavior',
+        action: 'page_view',
+        page_url: window.location.href,
+        route: window.location.pathname,
+        referrer: document.referrer,
     }
-    console.log(reportData);
-    
-    // lazyReportBatch(reportData)
+
+    report(reportData)
 }

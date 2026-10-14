@@ -1,29 +1,24 @@
-import type { ReportData } from "@weils-monitor/shared";
+import type { ReportData } from '@weils-monitor/shared'
+import { report } from '../report'
 
-// 首次内容绘制时间 (First Contentful Paint, FCP)，标准 <= 1s
-export const observerFCP = () => {
-    const entryHandler: PerformanceObserverCallback = (entries: PerformanceObserverEntryList, observer: PerformanceObserver): void => {
-        for (const entry of entries.getEntries()) {
-            if (entry.name === 'first-contentful-paint') {
-                observer.disconnect();
-                const json = entry.toJSON();
-                console.log(json);
-                const reportData: ReportData = {
-                    ...json,
-                    type: 'performance',
-                    subType: entry.name,
-                    pageUrl: window.location.href,
-                }
-                console.log(reportData);
-                
-                // 发送数据 todo;
-                // lazyReportBatch(reportData);
-            }
-        }
+export const observerFCP = (): void => {
+  if (!('PerformanceObserver' in window)) return
 
+  const observer = new PerformanceObserver((entries) => {
+    const entry = entries.getEntries().find(({ name }) => name === 'first-contentful-paint')
+    if (!entry) return
+
+    observer.disconnect()
+    const value = entry.startTime
+    const reportData: ReportData = {
+      event_type: 'performance',
+      metric_name: 'FCP',
+      value,
+      rating: value <= 1800 ? 'good' : value <= 3000 ? 'needs-improvement' : 'poor',
+      start_time: entry.startTime,
     }
-    // 统计和计算fcp的时间
-    const observer: PerformanceObserver = new PerformanceObserver(entryHandler);
-    // buffered: true 确保观察到所有paint事件
-    observer.observe({type: 'paint', buffered: true});
+    report(reportData)
+  })
+
+  observer.observe({ type: 'paint', buffered: true })
 }

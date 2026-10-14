@@ -1,29 +1,64 @@
 import type { ClickReportData } from "@weils-monitor/shared";
+import { report } from '../report';
 
 export const click = (): void => {
-  const events = ['mousedown', 'touchstart'] as const;
-
-  events.forEach((eventType) => {
-    window.addEventListener(eventType, (e: MouseEvent | TouchEvent): void => {
+    window.addEventListener('click', (e: MouseEvent): void => {
       const target = e.target as HTMLElement | null;
       if (!target?.tagName) return;
 
       const reportData: ClickReportData = {
-        // scrollTop: document.documentElement.scrollTop,
-        type: 'behavior',
-        subType: 'click',
-        target: target.tagName,
-        startTime: e.timeStamp,
-        innerHtml: target.innerHTML,
-        outerHtml: target.outerHTML,
-        width: target.offsetWidth,      // 原代码 with 是拼写错误
-        height: target.offsetHeight,
-        eventType,
-        path: e.composedPath?.() ?? [], // 原代码 e.path 已废弃
+        event_type: 'behavior',
+        action: 'click',
+        target: {
+          selector: getCssPath(target),
+          text: getSafeText(target),
+          tag: target.tagName,
+        },
       };
-      console.log(reportData);
-      
-    //   lazyReportBatch(reportData);
+
+      report(reportData);
     });
-  });
+}
+
+/** 表单控件和可编辑区域不采集文本，避免泄露输入值、密码或验证码。 */
+const getSafeText = (target: HTMLElement): string | undefined => {
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  ) {
+    return undefined;
+  }
+
+  const text = target.textContent?.replace(/\s+/g, ' ').trim();
+  return text ? text.slice(0, 120) : undefined;
+}
+
+/**
+ * 生成元素的简短 CSS 选择器路径（最多 6 层）
+ */
+const getCssPath = (el: HTMLElement): string => {
+  const parts: string[] = [];
+  let node: HTMLElement | null = el;
+
+  while (node && node.nodeType === 1 && parts.length < 6) {
+    let selector = node.nodeName.toLowerCase();
+
+    if (node.id) {
+      selector += `#${node.id}`;
+      parts.unshift(selector);
+      break;
+    }
+
+    if (node.className && typeof node.className === 'string') {
+      const cls = node.className.trim().split(/\s+/).slice(0, 2).join('.');
+      if (cls) selector += `.${cls}`;
+    }
+
+    parts.unshift(selector);
+    node = node.parentElement;
+  }
+
+  return parts.join(' > ');
 }

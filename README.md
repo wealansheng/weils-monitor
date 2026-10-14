@@ -1,4 +1,4 @@
-# cy-monitor
+# weils-monitor
 
 前端监控 SDK 的 pnpm monorepo，包含公共类型、工具函数以及 Vue / Nuxt / uni-app 三个框架适配层。
 
@@ -33,6 +33,7 @@ pnpm verify:exports   # 校验 package.json 入口声明指向真实产物
 pnpm clean            # 清理各 package 的 dist
 pnpm changeset        # 生成变更记录
 pnpm version-packages # 依据 changeset 升级版本号
+pnpm release          # 构建、校验并发布尚未发布的新版本
 ```
 
 ## 构建约定
@@ -42,6 +43,48 @@ pnpm version-packages # 依据 changeset 升级版本号
 - 类型检查统一继承根目录的 `tsconfig.base.json`：其中 `paths` 直接指向各 package 的 `src`，因此 `pnpm typecheck` 无需先构建即可通过。
 - 各 package 的 `tsconfig.json` 只做类型检查（`noEmit`），不做产物输出。
 
+## 发布流程
+
+本仓库使用 Changesets 管理版本和 CHANGELOG。`pnpm release` 只负责构建、校验和发布，不会自动修改 package 版本。
+
+### 1. 创建 changeset
+
+功能或修复完成后执行：
+
+```bash
+pnpm changeset
+```
+
+选择本次涉及的 package，并按语义化版本规则指定升级级别：
+
+- `patch`：向后兼容的问题修复，例如构建配置或入口修复。
+- `minor`：向后兼容的新功能或新导出。
+- `major`：存在破坏性 API 或类型变更。
+
+生成的 `.changeset/*.md` 文件需要与代码一起提交。
+
+### 2. 更新版本
+
+准备发布时执行：
+
+```bash
+pnpm version-packages
+pnpm install
+```
+
+该步骤会消费 changeset，更新 package 版本、CHANGELOG、内部依赖版本和锁文件。更新后应检查并提交这些文件。
+
+### 3. 发布
+
+确认 npm 登录状态和发布权限后执行：
+
+```bash
+pnpm release
+```
+
+发布命令会依次执行 package 构建、入口产物校验和 `changeset publish`。npm 不允许覆盖已经发布的版本，因此发布前必须先完成版本更新。
+
 ## 常见问题
 
 - `pnpm install` 报 esbuild `Expected "x.y.z" but got "a.b.c"`（`postinstall` 失败），通常是本地 pnpm store / 虚拟目录链接不完整导致的，执行 `pnpm install --force` 重新链接即可。
+- `pnpm release` 提示 `version x.y.z is already published` 或 `No unpublished projects to publish`，说明本地 package 版本与 npm 上已发布版本相同。依次执行 `pnpm changeset`、`pnpm version-packages`、`pnpm install`，提交版本相关文件后再重新发布。

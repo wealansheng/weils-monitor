@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 interface MonitorReport extends Record<string, unknown> {
-  type: string;
-  subType: string;
+  event_type: string;
+  metric_name?: string;
+  error_type?: string;
+  action?: string;
+  issue_type?: string;
 }
 
 interface ReportEntry {
@@ -14,7 +17,11 @@ interface ReportEntry {
 
 const reports = ref<ReportEntry[]>([]);
 const selectedId = ref<number | null>(null);
+const copyState = ref<'idle' | 'copied' | 'failed'>('idle');
+const MAX_REPORTS = 50;
+const MAX_RESOURCE_REPORTS = 5;
 let nextId = 1;
+let copyResetTimer: number | undefined;
 
 const selectedReport = computed(
   () => reports.value.find((entry) => entry.id === selectedId.value) ?? reports.value[0] ?? null,
@@ -25,6 +32,52 @@ const typeLabel: Record<string, string> = {
   error: '错误',
   performance: '性能',
 };
+
+const subTypeLabel: Record<string, string> = {
+  click: '页面点击',
+  CLS: '累积布局偏移',
+  FCP: '首次内容绘制',
+  FID: '首次输入延迟',
+  FP: '首次绘制',
+  route_change: '路由变化',
+  INP: '交互到下次绘制',
+  js_error: 'JavaScript 错误',
+  navigation: '页面加载',
+  LCP: '最大内容绘制',
+  promise_error: 'Promise 拒绝',
+  page_view: '页面访问',
+  resource: '资源事件',
+  TTFB: '首字节时间',
+  framework_error: 'Vue 组件错误',
+};
+
+const automaticMonitors = [
+  { label: 'TTFB', subType: 'TTFB', note: '主文档响应' },
+  { label: 'FP', subType: 'FP', note: '首次绘制' },
+  { label: 'FCP', subType: 'FCP', note: '内容绘制' },
+  { label: 'LCP', subType: 'LCP', note: '最大内容' },
+  { label: 'Load', subType: 'navigation', note: '页面完成' },
+  { label: 'FID', subType: 'FID', note: '首次交互' },
+  { label: 'CLS', subType: 'CLS', note: '离开页面时结算' },
+  { label: 'INP', subType: 'INP', note: '交互后结算' },
+] as const;
+
+const capturedSubTypes = computed(
+  () => new Set(reports.value.map(({ report }) => getReportKind(report))),
+);
+
+const getReportKind = (report: MonitorReport): string =>
+  report.metric_name ?? report.error_type ?? report.action ?? report.issue_type ?? report.event_type;
+
+const selectedJson = computed(() =>
+  selectedReport.value ? JSON.stringify(selectedReport.value.report, null, 2) : '',
+);
+
+const copyLabel = computed(() => {
+  if (copyState.value === 'copied') return '已复制';
+  if (copyState.value === 'failed') return '复制失败';
+  return '复制 JSON';
+});
 
 const makeSerializable = (report: MonitorReport): MonitorReport => {
   const seen = new WeakSet<object>();
@@ -61,7 +114,17 @@ const onReport = (event: Event): void => {
     report,
   };
 
-  reports.value = [entry, ...reports.value].slice(0, 30);
+  let resourceCount = 0;
+  reports.value = [entry, ...reports.value]
+    .filter(({ report: currentReport }) => {
+      if (currentReport.event_type !== 'performance' || currentReport.metric_name !== 'resource') {
+        return true;
+      }
+
+      resourceCount += 1;
+      return resourceCount <= MAX_RESOURCE_REPORTS;
+    })
+    .slice(0, MAX_REPORTS);
   selectedId.value = entry.id;
 };
 
@@ -97,8 +160,31 @@ const clearReports = (): void => {
   selectedId.value = null;
 };
 
+const copySelectedReport = async (): Promise<void> => {
+  if (!selectedJson.value) return;
+
+  try {
+    await navigator.clipboard.writeText(selectedJson.value);
+    copyState.value = 'copied';
+  } catch {
+    copyState.value = 'failed';
+  }
+
+  window.clearTimeout(copyResetTimer);
+  copyResetTimer = window.setTimeout(() => {
+    copyState.value = 'idle';
+  }, 1800);
+};
+
+watch(selectedId, () => {
+  copyState.value = 'idle';
+});
+
 onMounted(() => window.addEventListener('weils-monitor:report', onReport));
-onBeforeUnmount(() => window.removeEventListener('weils-monitor:report', onReport));
+onBeforeUnmount(() => {
+  window.removeEventListener('weils-monitor:report', onReport);
+  window.clearTimeout(copyResetTimer);
+});
 </script>
 
 <template>
@@ -123,10 +209,30 @@ onBeforeUnmount(() => window.removeEventListener('weils-monitor:report', onRepor
       </div>
       <div class="install-snippet" aria-label="插件安装代码">
         <span>main.ts</span>
-        <pre><code><b>import</b> Monitor <b>from</b> '@weils-monitor/vue'
+        <pre><code><b>import</b> WeilsMonitor <b>from</b> '@weils-monitor/vue'
 
-app.use(Monitor, options)</code></pre>
+app.use(WeilsMonitor, options)
+WeilsMonitor.performance.observerLCP()
+<span class="snippet-note">// 达到条数、体积等任一阈值时自动上报</span></code></pre>
       </div>
+    </section>
+
+    <section class="monitor-rail" aria-labelledby="automatic-title">
+      <div class="monitor-rail-copy">
+        <h2 id="automatic-title">自动性能监测</h2>
+        <p>刷新页面后自动采集；FID 会在首次交互后出现，CLS 会在页面进入后台时结算。</p>
+      </div>
+      <ul aria-label="性能监测状态">
+        <li
+          v-for="monitor in automaticMonitors"
+          :key="monitor.subType"
+          :class="{ captured: capturedSubTypes.has(monitor.subType) }"
+        >
+          <span class="status-dot" aria-hidden="true"></span>
+          <strong>{{ monitor.label }}</strong>
+          <small>{{ capturedSubTypes.has(monitor.subType) ? '已捕获' : monitor.note }}</small>
+        </li>
+      </ul>
     </section>
 
     <section class="workspace" aria-label="监控事件演示台">
@@ -168,13 +274,23 @@ app.use(Monitor, options)</code></pre>
         </div>
       </div>
 
-      <div class="reports-panel" aria-live="polite">
+      <div class="reports-panel">
         <div class="section-heading reports-heading">
           <div>
             <h2>实时报告</h2>
-            <p>{{ reports.length ? `已捕获 ${reports.length} 条事件` : '等待你的第一次操作' }}</p>
+            <p role="status" aria-live="polite">{{ reports.length ? `已捕获 ${reports.length} 条事件` : '正在等待 SDK 输出' }}</p>
           </div>
-          <button class="clear-button" type="button" :disabled="!reports.length" @click="clearReports">清空</button>
+          <div class="report-actions">
+            <button
+              class="copy-button"
+              type="button"
+              :disabled="!selectedReport"
+              @click="copySelectedReport"
+            >
+              {{ copyLabel }}
+            </button>
+            <button class="clear-button" type="button" :disabled="!reports.length" @click="clearReports">清空</button>
+          </div>
         </div>
 
         <div v-if="reports.length" class="report-content">
@@ -185,13 +301,16 @@ app.use(Monitor, options)</code></pre>
                 :class="{ active: selectedReport?.id === entry.id }"
                 @click="selectedId = entry.id"
               >
-                <span class="event-dot" :data-type="entry.report.type"></span>
-                <span><strong>{{ entry.report.subType }}</strong><small>{{ typeLabel[entry.report.type] ?? entry.report.type }}</small></span>
+                <span class="event-dot" :data-type="entry.report.event_type"></span>
+                <span>
+                  <strong>{{ subTypeLabel[getReportKind(entry.report)] ?? getReportKind(entry.report) }}</strong>
+                  <small>{{ typeLabel[entry.report.event_type] ?? entry.report.event_type }} · {{ getReportKind(entry.report) }}</small>
+                </span>
                 <time>{{ entry.receivedAt }}</time>
               </button>
             </li>
           </ol>
-          <pre class="report-json"><code>{{ JSON.stringify(selectedReport?.report, null, 2) }}</code></pre>
+          <pre class="report-json"><code>{{ selectedJson }}</code></pre>
         </div>
 
         <div v-else class="empty-state">
@@ -199,8 +318,8 @@ app.use(Monitor, options)</code></pre>
             <path d="M9 34V14m10 20V22m10 12V9m10 25V18" />
             <path d="M5 39h38" />
           </svg>
-          <strong>报告会在这里出现</strong>
-          <p>点击左侧任一场景。普通点击与首次访问也已在监测。</p>
+          <strong>正在监听监控报告</strong>
+          <p>首屏性能数据会自动出现；也可以点击左侧场景，检查错误与行为采集。</p>
         </div>
       </div>
     </section>

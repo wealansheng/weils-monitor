@@ -1,35 +1,22 @@
 import type { ReportData } from '@weils-monitor/shared'
+import { report } from '../report'
 
-// 首次绘制时间 (First Paint, FP)，标准 <= 1s
 export const observerFP = (): void => {
-  if (typeof window === 'undefined' || !('PerformanceObserver' in window)) {
-    console.warn('浏览器不支持 PerformanceObserver，无法监控 FP')
-    return
-  }
+  if (!('PerformanceObserver' in window)) return
 
-  const entryHandler: PerformanceObserverCallback = (entries, observer): void => {
+  const observer = new PerformanceObserver((entries) => {
     const entry = entries.getEntries().find(({ name }) => name === 'first-paint')
     if (!entry) return
 
     observer.disconnect()
-
     const reportData: ReportData = {
-      ...entry.toJSON(),
-      type: 'performance',
-      subType: 'first-paint',
-      pageURL: window.location.href,
+      event_type: 'performance',
+      metric_name: 'FP',
+      value: entry.startTime,
+      start_time: entry.startTime,
     }
+    report(reportData)
+  })
 
-    console.log(reportData)
-    // lazyReportBatch(reportData)
-  }
-
-  const observer = new PerformanceObserver(entryHandler)
-
-  try {
-    observer.observe({ type: 'paint', buffered: true })
-  } catch {
-    observer.disconnect()
-    console.warn('当前浏览器不支持 FP 监控')
-  }
+  observer.observe({ type: 'paint', buffered: true })
 }

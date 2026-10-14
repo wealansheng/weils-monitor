@@ -3,14 +3,17 @@
 import * as performance from './performance';
 import * as error from './error';
 import * as behavior from './behavior';
+import * as stability from './stability';
 
 import { setConfig } from '@weils-monitor/utils';
+import { VERSION } from '@weils-monitor/shared';
 import type { InitOptions, VueReportData } from '@weils-monitor/shared';
 import type { App, ComponentPublicInstance } from 'vue';
+import { report, setupExitFlush } from './report';
 
 // 挂载全局对象
 window.__WEILS_MONITOR_SDK__ = {
-  version: '0.0.1',
+  version: VERSION,
 };
 
 // 监控vue错误
@@ -19,6 +22,7 @@ export const install = (Vue: App, options: Partial<InitOptions>): void => {
   window.__WEILS_MONITOR_SDK__.vue = true;
 
   setConfig(options);
+  setupExitFlush();
 
   const handler = Vue.config.errorHandler;
 
@@ -29,16 +33,16 @@ export const install = (Vue: App, options: Partial<InitOptions>): void => {
     info: string,
   ): void {
     const reportData: VueReportData = {
-      type: 'error',
-      subType: 'vue',
-      info,
-      error: err instanceof Error ? err.stack : String(err),
-      startTime: window.performance.now(),
-      pageURL: window.location.href,
+      event_type: 'error',
+      error_type: 'framework_error',
+      message: err instanceof Error ? err.message : String(err),
+      name: err instanceof Error ? err.name : undefined,
+      stack: err instanceof Error ? err.stack : undefined,
+      component: vm?.$options.name,
+      component_stack: info,
     }
 
-    // lazyReportBatch(reportData);
-    console.log(reportData);
+    report(reportData);
 
     if (handler) {
       handler.call(this, err, vm, info);
@@ -48,14 +52,18 @@ export const install = (Vue: App, options: Partial<InitOptions>): void => {
 
 export const init = (options: InitOptions): void => {
   setConfig(options);
+  setupExitFlush();
 };
 
 export * from './types';
+export * from './report';
 
 export default {
   install,
   performance,
   error,
   behavior,
+  stability,
   init,
+  report,
 };

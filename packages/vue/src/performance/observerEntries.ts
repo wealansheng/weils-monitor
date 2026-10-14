@@ -1,53 +1,39 @@
-import type { EntriesReportData } from '@weils-monitor/shared';
+import type { EntriesReportData } from '@weils-monitor/shared'
+import { isMonitorRequest } from '../context'
+import { report } from '../report'
 
 export const observerEntries = (): void => {
   if (document.readyState === 'complete') {
-    observerEvent();
+    observerEvent()
   } else {
-    const onLoad = (): void => {
-      observerEvent();
-      window.removeEventListener('load', onLoad, true);
-    };
-    window.addEventListener('load', onLoad, true);
+    window.addEventListener('load', observerEvent, { once: true, capture: true })
   }
 }
 
 export const observerEvent = (): void => {
-  let observer: PerformanceObserver | null = null;
+  if (!('PerformanceObserver' in window)) return
 
-  const entryHandler = (list: PerformanceObserverEntryList): void => {
-    // 断言成具体子类，才能访问 encodedBodySize 等属性
-    const data = list.getEntries() as PerformanceResourceTiming[];
-
-    for (const entry of data) {
-      if (observer) {
-        observer.disconnect();
-      }
+  const observer = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries() as PerformanceResourceTiming[]) {
+      // 上报请求本身也会产生 resource timing；不排除会形成无限上报闭环。
+      if (isMonitorRequest(entry.name)) continue
 
       const reportData: EntriesReportData = {
+        event_type: 'performance',
+        metric_name: 'resource',
         name: entry.name,
-        type: 'performance',
-        subType: entry.entryType,
-        sourceType: entry.initiatorType,
+        initiator_type: entry.initiatorType,
         duration: entry.duration,
-        dns: entry.domainLookupEnd - entry.domainLookupStart,
-        tcp: entry.connectEnd - entry.connectStart,
-        redirect: entry.redirectEnd - entry.redirectStart,
-        ttfb: entry.responseStart,
-        protocol: entry.nextHopProtocol,
-        responseBodySize: entry.encodedBodySize,
-        responseHeaderSize: entry.transferSize - entry.encodedBodySize,
-        transferSize: entry.transferSize,
-        resourceSize: entry.decodedBodySize,
-        startTime: performance.now(),
-      };
-      console.log(reportData)
-    //   lazyReportBatch(reportData);
-    }
-  };
+        transfer_size: entry.transferSize,
+        encoded_body_size: entry.encodedBodySize,
+        start_time: entry.startTime,
+      }
 
-  observer = new PerformanceObserver(entryHandler);
-  observer.observe({ type: 'resource', buffered: true });
+      report(reportData)
+    }
+  })
+
+  observer.observe({ type: 'resource', buffered: true })
 }
 
 export default observerEntries
