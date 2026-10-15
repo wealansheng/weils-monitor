@@ -12,6 +12,7 @@
 | `packages/nuxt` | Nuxt 3 模块（`@weils-monitor/nuxt`） |
 | `packages/uniapp` | uni-app 适配层（`@weils-monitor/uniapp`） |
 | `example/vue` | `@weils-monitor/vue` 的 Vue 3 + Vite 交互演示 |
+| `example/nuxt` | `@weils-monitor/nuxt` 的 Nuxt 3 交互演示 |
 | `scripts/` | 仓库维护脚本（清理产物、校验入口声明） |
 
 ## 环境要求
@@ -25,7 +26,7 @@
 pnpm install          # 安装 workspace 依赖
 pnpm dev              # 监听全部 packages（不启动 example）
 pnpm dev:vue          # 监听 Vue 包并启动 Vue 示例
-pnpm dev:nuxt         # 仅监听 Nuxt 包
+pnpm dev:nuxt         # 构建依赖、监听 Nuxt 包并启动 Nuxt 示例
 pnpm dev:uniapp       # 仅监听 uni-app 包
 pnpm typecheck        # 全量类型检查（tsc --noEmit）
 pnpm build            # 构建全部 package（tsup）
@@ -58,9 +59,44 @@ monitor.observer()
 
 组件耗时是生命周期区间，可能包含子组件工作，不等同于纯渲染函数的 CPU 时间。上述事件使用现有队列发送规则；不足一个批次时会在页面隐藏或退出时发送。
 
+## Nuxt 3 接入
+
+在 `nuxt.config.ts` 中配置与 Vue 子包相同的监控参数：
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@weils-monitor/nuxt'],
+  cyMonitor: {
+    url: '/api/monitor',
+    appId: 'my-nuxt-app',
+    projectName: 'my-nuxt-app',
+    clickAttributes: ['custom-data'],
+  },
+})
+```
+
+模块会自动安装 Vue 监控并启动全部采集器。`cyMonitor` 接受 Vue 子包的监控参数；`clickAttributes` 用于把指定 HTML 属性的值作为点击事件的 `action`。运行时插件仅在客户端加载；缺少 `url` 或 `appId` 时不会启动监控。
+
+组件或自定义的 `*.client.ts` 插件可以通过 `useNuxtApp().$monitor` 调用 Vue 子包的 API：
+
+```ts
+const { $monitor } = useNuxtApp()
+$monitor?.addClickHandler('another-action')
+$monitor?.report({
+  event_type: 'behavior',
+  action: 'custom_event',
+  properties: { source: 'nuxt' },
+})
+```
+
+自定义事件会进入同一上报队列，按批量阈值或页面退出规则发送。服务端渲染期间 `$monitor` 不存在，所以调用时使用可选链。
+示例的 `plugins/custom-monitor.client.ts` 还演示了在自定义 Nuxt 插件中追加点击属性。
+
+运行 `pnpm dev:nuxt` 后打开 `http://localhost:3000`，可触发 JavaScript 错误、Promise 拒绝、资源失败、普通点击、自定义点击和自定义事件，也可在首页与详情页之间切换以查看 `route_change`。浏览器向示例的 `/api/monitor` 发送 POST，再由 Nuxt 服务端转发到 `http://localhost:8888/api/v1/monitor`，无需后端开启跨域访问。达到 20 条、严重错误或页面退出时会发送队列中的事件。
+
 ## 构建约定
 
-- 每个 package 由 `tsup` 打包，ESM 产物为 `dist/index.mjs`，CJS 产物为 `dist/index.cjs`，类型声明为 `dist/index.d.ts`（`packages/nuxt` 仅输出 ESM 的 `dist/module.mjs`）。
+- 每个 package 由 `tsup` 打包，ESM 产物为 `dist/index.mjs`，CJS 产物为 `dist/index.cjs`，类型声明为 `dist/index.d.ts`（`packages/nuxt` 输出 ESM 的 `dist/module.mjs` 和 `dist/runtime/plugin.client.mjs`）。
 - `package.json` 的 `main` / `module` / `types` / `exports` 必须与上述产物一致，改动 `tsup.config.ts` 的 `outExtension` 或入口后请执行 `pnpm build && pnpm verify:exports`。
 - 类型检查统一继承根目录的 `tsconfig.base.json`：其中 `paths` 直接指向各 package 的 `src`，因此 `pnpm typecheck` 无需先构建即可通过。
 - 各 package 的 `tsconfig.json` 只做类型检查（`noEmit`），不做产物输出。

@@ -29,6 +29,7 @@ export interface BaseReportData {
   event_id?: string
   timestamp?: number
   app_id?: string
+  projectName?: string
   release?: string
   environment?: string
   user_id?: string

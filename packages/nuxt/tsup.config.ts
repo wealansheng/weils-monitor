@@ -1,12 +1,15 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-  entry: ['src/module.ts'],
+  entry: {
+    module: 'src/module.ts',
+    'runtime/plugin.client': 'src/runtime/plugin.client.ts',
+  },
   format: ['esm'],
   dts: true,
   sourcemap: true,
   clean: true,
-  external: ['nuxt', '@nuxt/kit', '@nuxt/schema'],
+  external: ['nuxt', 'nuxt/app', '@nuxt/kit', '@nuxt/schema'],
   outExtension() {
     return {
       js: '.mjs',

@@ -97,6 +97,7 @@ export const collectCommonFields = (): Omit<BaseReportData, 'event_type'> => {
 
   return {
     app_id: String(config.appId || config.appKey || ''),
+    projectName: String(config.projectName || ''),
     release: config.release || undefined,
     environment: config.environment || 'production',
     user_id: config.userId === undefined || config.userId === '' ? undefined : String(config.userId),

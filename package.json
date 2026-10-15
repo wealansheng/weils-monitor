@@ -6,7 +6,7 @@
     "dev:shared": "turbo run dev --filter=@weils-monitor/shared",
     "dev:utils": "turbo run dev --filter=@weils-monitor/utils",
     "dev:vue": "turbo run dev --filter=@weils-monitor/vue --filter=@weils-monitor/example-vue",
-    "dev:nuxt": "turbo run dev --filter=@weils-monitor/nuxt",
+    "dev:nuxt": "turbo run build --filter=@weils-monitor/nuxt... && turbo run dev --filter=@weils-monitor/nuxt --filter=@weils-monitor/example-nuxt",
     "dev:uniapp": "turbo run dev --filter=@weils-monitor/uniapp",
     "build": "turbo run build --filter=./packages/*",
     "build:all": "turbo run build",

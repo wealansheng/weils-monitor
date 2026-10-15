@@ -35,6 +35,7 @@ export const normalizeReportData = (data: QueueReportData): QueueReportData => {
     event_id: eventId,
     timestamp: Number.isInteger(timestamp) && timestamp > 0 ? timestamp : Date.now(),
     app_id: String(data.app_id || config.appId || config.appKey || ''),
+    projectName: String(config.projectName || ''),
   } as QueueReportData;
 };
 

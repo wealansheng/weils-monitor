@@ -138,6 +138,7 @@ await flush();
 assert.equal(ajaxRequests.length, 0, '未到 batchSize 时不应发送');
 assert.equal(shared.getCacheSize(), 2, 'vue 包应把数据放进队列');
 assert.equal(dispatchedEvents.length, 2, '每条数据都应派发 weils-monitor:report 事件');
+assert.equal(dispatchedEvents[0].projectName, 'weils-monitor-smoke');
 
 // 2. 到 batchSize：由 utils 自动发送一批
 vue.report(makeReport(3));
@@ -149,6 +150,7 @@ const batchPayload = await parseBody(ajaxRequests[0].body);
 assert.equal(ajaxRequests[0].method, 'POST');
 assert.equal(ajaxRequests[0].url, 'http://127.0.0.1:9999/report');
 assert.equal(batchPayload.app_id, 'smoke-app');
+assert.equal(batchPayload.projectName, 'weils-monitor-smoke');
 assert.equal(batchPayload.sdk_version, '1.0.1');
 assert.equal(batchPayload.sample_rate, 0.5);
 assert.equal(typeof batchPayload.send_time, 'number');
@@ -161,6 +163,7 @@ for (const event of batchPayload.events) {
   assert.match(event.event_id, /^[0-9a-f-]{36}$/i);
   assert.equal(event.event_type, 'behavior');
   assert.equal(event.app_id, 'smoke-app');
+  assert.equal(event.projectName, 'weils-monitor-smoke');
   assert.equal(typeof event.timestamp, 'number');
   assert.equal(event.page_url, 'http://localhost:5173/');
 }

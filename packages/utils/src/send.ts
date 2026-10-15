@@ -19,6 +19,7 @@ export interface FlushReportOptions {
 
 export interface ReportEnvelope {
   app_id: string
+  projectName: string
   sdk_version: string
   send_time: number
   sample_rate: number
@@ -67,6 +68,7 @@ const byteLength = (value: string): number => new TextEncoder().encode(value).by
 
 export const createReportEnvelope = (data: unknown | unknown[]): ReportEnvelope => ({
   app_id: String(config.appId || config.appKey || ''),
+  projectName: String(config.projectName || ''),
   sdk_version: VERSION,
   send_time: Date.now(),
   sample_rate: getSampleRate(),
