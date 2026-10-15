@@ -49,6 +49,9 @@ const subTypeLabel: Record<string, string> = {
   resource: '资源事件',
   TTFB: '首字节时间',
   framework_error: 'Vue 组件错误',
+  '关闭遮罩': '自定义点击：关闭遮罩',
+  '打开遮罩': '自定义点击：打开遮罩',
+  '自定义上报数据': '自定义点击：数据',
 };
 
 const automaticMonitors = [
@@ -204,15 +207,15 @@ onBeforeUnmount(() => {
         <h1 id="page-title">把监控事件<br />亲手触发一遍。</h1>
         <p>
           这是 <code>@weils-monitor/vue</code> 的可运行示例。选择一个场景，然后在下方查看 SDK
-          捕获的原始报告；浏览器控制台中也会保留同样的输出。
+          捕获的原始报告。
         </p>
       </div>
       <div class="install-snippet" aria-label="插件安装代码">
         <span>main.ts</span>
-        <pre><code><b>import</b> WeilsMonitor <b>from</b> '@weils-monitor/vue'
+        <pre><code><b>import</b> { monitor } <b>from</b> './config/monitor'
 
-app.use(WeilsMonitor, options)
-WeilsMonitor.performance.observerLCP()
+app.use(monitor)
+monitor.observer()
 <span class="snippet-note">// 达到条数、体积等任一阈值时自动上报</span></code></pre>
       </div>
     </section>
@@ -242,7 +245,7 @@ WeilsMonitor.performance.observerLCP()
             <h2>触发场景</h2>
             <p>每个操作都使用浏览器的真实事件机制。</p>
           </div>
-          <span class="count">5 项</span>
+          <span class="count">8 项</span>
         </div>
 
         <div class="action-list">
@@ -269,6 +272,21 @@ WeilsMonitor.performance.observerLCP()
           <button type="button" @click="triggerRouteChange">
             <span class="action-index">E</span>
             <span><strong>Hash 路由变化</strong><small>记录切换前后的 URL</small></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
+          </button>
+          <button type="button" mask-close="关闭遮罩">
+            <span class="action-index">F</span>
+            <span><strong>关闭遮罩</strong><small>自定义属性 mask-close</small></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
+          </button>
+          <button type="button" mask-open="打开遮罩">
+            <span class="action-index">G</span>
+            <span><strong>打开遮罩</strong><small>自定义属性 mask-open</small></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
+          </button>
+          <button type="button" custom-data="自定义上报数据">
+            <span class="action-index">H</span>
+            <span><strong>自定义上报数据</strong><small>自定义属性 custom-data</small></span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
           </button>
         </div>

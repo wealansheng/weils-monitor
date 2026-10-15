@@ -1,43 +1,66 @@
-import type { ClickReportData } from "@weils-monitor/shared";
+import type { ClickReportData } from '@weils-monitor/shared';
 import { report } from '../report';
 
+const customClickAttributes = new Set<string>();
+let listening = false;
+
+/** Register an HTML attribute whose value becomes the click action. */
+export const addClickHandler = (attribute: string): void => {
+  const name = attribute.trim().toLowerCase();
+  if (!name) throw new TypeError('Click attribute name cannot be empty');
+  customClickAttributes.add(name);
+};
+
+const getCustomClick = (target: HTMLElement): { element: HTMLElement; action: string } | null => {
+  for (let element: HTMLElement | null = target; element; element = element.parentElement) {
+    for (const attribute of customClickAttributes) {
+      const action = element.getAttribute(attribute);
+      if (action) return { element, action };
+    }
+  }
+  return null;
+};
+
 export const click = (): void => {
-    window.addEventListener('click', (e: MouseEvent): void => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.tagName) return;
+  if (listening) return;
+  listening = true;
 
-      const reportData: ClickReportData = {
-        event_type: 'behavior',
-        action: 'click',
-        target: {
-          selector: getCssPath(target),
-          text: getSafeText(target),
-          tag: target.tagName,
-        },
-      };
+  window.addEventListener('click', (event: MouseEvent): void => {
+    let element = event.target instanceof Element ? event.target : null;
+    while (element && !(element instanceof HTMLElement)) element = element.parentElement;
+    const target = element;
+    if (!target) return;
 
-      report(reportData);
-    });
-}
+    const customClick = getCustomClick(target);
+    const reportTarget = customClick?.element ?? target;
+    const reportData: ClickReportData = {
+      event_type: 'behavior',
+      action: customClick?.action ?? 'click',
+      target: {
+        selector: getCssPath(reportTarget),
+        text: getSafeText(reportTarget),
+        tag: reportTarget.tagName,
+      },
+    };
 
-/** 表单控件和可编辑区域不采集文本，避免泄露输入值、密码或验证码。 */
+    report(reportData);
+  });
+};
+
+/** Avoid collecting form values, passwords and editable text. */
 const getSafeText = (target: HTMLElement): string | undefined => {
   if (
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
     target instanceof HTMLSelectElement ||
     target.isContentEditable
-  ) {
-    return undefined;
-  }
+  ) return undefined;
 
   const text = target.textContent?.replace(/\s+/g, ' ').trim();
   return text ? text.slice(0, 120) : undefined;
-}
+};
 
-/**
- * 生成元素的简短 CSS 选择器路径（最多 6 层）
- */
+/** Build a short CSS selector path (at most six levels). */
 const getCssPath = (el: HTMLElement): string => {
   const parts: string[] = [];
   let node: HTMLElement | null = el;
@@ -61,4 +84,4 @@ const getCssPath = (el: HTMLElement): string => {
   }
 
   return parts.join(' > ');
-}
+};

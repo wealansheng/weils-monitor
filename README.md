@@ -36,6 +36,28 @@ pnpm version-packages # 依据 changeset 升级版本号
 pnpm release          # 构建、校验并发布尚未发布的新版本
 ```
 
+## Vue 耗时采集
+
+在 `app.mount()` **之前**安装监控插件和 Vue Router：
+
+```ts
+app.use(router)
+app.use(monitor)
+app.mount('#app')
+monitor.observer()
+```
+
+`monitor.observer()` 可以在 `mount()` 之后调用：插件安装时会暂存组件首次挂载耗时和首屏结果，启动后补报。若插件本身在 `mount()` 之后才安装，已发生的挂载无法追溯。路由切换只统计启动监控之后发生的导航。
+
+| 上报字段 | 含义 |
+| --- | --- |
+| `metric_name: "vue_first_screen"` | 从页面导航起点到 Vue 根组件及同步子组件挂载后的下一次绘制，单位毫秒；不等待异步组件、Suspense 或后续接口数据 |
+| `metric_name: "vue_component_mount"` | 单个组件从 `beforeMount` 到 `mounted` 的耗时，`name` 为组件名 |
+| `metric_name: "vue_component_update"` | 单个组件从 `beforeUpdate` 到 `updated` 的耗时，`name` 为组件名 |
+| `action: "route_change"` | Vue Router 从 SDK 注册的全局 `beforeEach` 到新页面 DOM 更新后的绘制；包含此后执行的异步守卫与异步路由组件。未安装 Vue Router 时，从 History URL 变化开始计时；`duration` 单位毫秒 |
+
+组件耗时是生命周期区间，可能包含子组件工作，不等同于纯渲染函数的 CPU 时间。上述事件使用现有队列发送规则；不足一个批次时会在页面隐藏或退出时发送。
+
 ## 构建约定
 
 - 每个 package 由 `tsup` 打包，ESM 产物为 `dist/index.mjs`，CJS 产物为 `dist/index.cjs`，类型声明为 `dist/index.d.ts`（`packages/nuxt` 仅输出 ESM 的 `dist/module.mjs`）。

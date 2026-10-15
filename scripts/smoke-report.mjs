@@ -56,6 +56,7 @@ const fakeDocument = new EventTarget();
 fakeDocument.visibilityState = 'visible';
 fakeDocument.readyState = 'complete';
 fakeDocument.referrer = '';
+fakeDocument.createElement = () => ({});
 
 globalThis.window = fakeWindow;
 globalThis.document = fakeDocument;
@@ -104,10 +105,12 @@ const performanceObservers = [];
 class FakePerformanceObserver {
   constructor(callback) {
     this.callback = callback;
+    this.pending = [];
     performanceObservers.push(this);
   }
-  observe() {}
+  observe(options) { this.options = options; }
   disconnect() {}
+  takeRecords() { return this.pending.splice(0); }
   emit(entries) {
     this.callback({ getEntries: () => entries });
   }
@@ -218,4 +221,33 @@ vue.report({
 await flush();
 assert.equal(ajaxRequests.length, 3, '达到体积阈值应立即 flush');
 
-console.log('✅ 冒烟验证通过：字段规范化、批量包及四类 flush 条件均正常');
+// 8. CLS 在页面隐藏时结算，并在先前的退出 flush 之后单独发送
+utils.setConfig({ batchSize: 100, maxBatchBytes: 50 * 1024 });
+vue.default.performance.observerCLS();
+const clsObserver = performanceObservers.at(-1);
+assert.equal(clsObserver.options.type, 'layout-shift');
+clsObserver.emit([
+  { startTime: 100, value: 0.08, hadRecentInput: false },
+  { startTime: 200, value: 0.5, hadRecentInput: true },
+]);
+clsObserver.pending.push({ startTime: 300, value: 0.04, hadRecentInput: false });
+const beaconsBeforeCLS = beacons.length;
+fakeDocument.dispatchEvent(new Event('visibilitychange'));
+assert.equal(beacons.length, beaconsBeforeCLS + 1, 'CLS 应在页面隐藏时由 beacon 发送');
+const clsPayload = await parseBody(beacons.at(-1).body);
+assert.equal(clsPayload.events.length, 1);
+assert.equal(clsPayload.events[0].metric_name, 'CLS');
+assert.ok(Math.abs(clsPayload.events[0].value - 0.12) < 1e-10);
+assert.equal(clsPayload.events[0].rating, 'needs-improvement');
+fakeWindow.dispatchEvent(new Event('pagehide'));
+assert.equal(beacons.length, beaconsBeforeCLS + 1, 'CLS 不应重复上报');
+
+// 9. 没有布局偏移时也要上报有效的 0 分数，供后端统计正常样本
+vue.default.performance.observerCLS();
+fakeWindow.dispatchEvent(new Event('pagehide'));
+const zeroCLSPayload = await parseBody(beacons.at(-1).body);
+assert.equal(zeroCLSPayload.events[0].metric_name, 'CLS');
+assert.equal(zeroCLSPayload.events[0].value, 0);
+assert.equal(zeroCLSPayload.events[0].rating, 'good');
+
+console.log('✅ 冒烟验证通过：字段规范化、批量包、退出冲刷及 CLS 上报均正常');
