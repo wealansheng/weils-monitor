@@ -1,0 +1,96 @@
+:root {
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+  color: #182a22;
+  background: #eeeee7;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+html { min-width: 320px; }
+body { margin: 0; min-width: 320px; }
+button, a { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-underline-offset: 3px; }
+button:focus-visible, a:focus-visible { outline: 3px solid #4ba47b; outline-offset: 3px; }
+::selection { color: #10271b; background: #addfc1; }
+
+.shell { max-width: 1460px; margin: auto; padding: 0 clamp(18px, 4vw, 64px) 64px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 80px; border-bottom: 1px solid #cdd3ca; }
+.brand { display: inline-flex; gap: 4px; align-items: baseline; font-size: 20px; font-weight: 800; letter-spacing: -.035em; text-decoration: none; }
+.brand span { color: #08764e; }
+.brand small { margin-left: 12px; color: #56685d; font: 600 12px/1.4 Consolas, monospace; letter-spacing: 0; }
+.sdk-status { display: inline-flex; align-items: center; gap: 10px; color: #59665e; font-size: 12px; font-weight: 700; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #939d94; }
+.sdk-status.ready .status-dot { background: #0b9a63; box-shadow: 0 0 0 4px #d3eadb; }
+
+.intro { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(290px, .7fr); gap: 48px; align-items: end; padding: 76px 0 56px; }
+.intro h1 { margin: 0 0 24px; font-size: clamp(44px, 5vw, 76px); line-height: 1.08; letter-spacing: -.035em; }
+.intro p { max-width: 66ch; margin: 0; color: #506358; font-size: 15px; line-height: 1.8; }
+.intro p code, .route-panel code { padding: 2px 5px; background: #dfe8de; border-radius: 4px; color: #23533c; font-size: .9em; }
+.install-code { margin: 0; padding: 22px 24px; overflow: auto; border-radius: 14px; color: #d3e7d8; background: #18291f; box-shadow: 0 20px 42px rgba(16, 38, 24, .15); font: 13px/1.75 Consolas, monospace; }
+.install-code span { display: block; margin-bottom: 16px; color: #9eb4a5; font-size: 11px; }
+.install-code code { display: block; white-space: pre; }
+
+.demo-grid { display: grid; grid-template-columns: minmax(330px, .85fr) minmax(0, 1.15fr); gap: 24px; align-items: start; }
+.left-column { display: grid; gap: 24px; }
+.route-panel, .actions, .reports { min-width: 0; border-radius: 14px; background: #f8f8f2; box-shadow: 0 16px 40px rgba(31, 49, 35, .07); }
+.route-panel { min-height: 258px; padding: 32px 36px; }
+.route-label { margin: 0 0 28px; color: #567364; font: 700 11px/1.3 Consolas, monospace; }
+.route-panel h2 { margin: 0 0 10px; font-size: 28px; letter-spacing: -.025em; }
+.route-panel > p:not(.route-label) { max-width: 48ch; margin: 0 0 24px; color: #54645a; font-size: 13px; line-height: 1.7; }
+.route-link { display: inline-flex; gap: 16px; align-items: center; color: #08764e; font-size: 13px; font-weight: 800; }
+.route-link span { font-size: 17px; }
+
+.actions { padding: 30px 36px 36px; }
+.section-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 22px; }
+.section-heading h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+.section-heading > span { color: #67786b; font-size: 11px; }
+.section-heading p { margin: 6px 0 0; color: #68766b; font-size: 12px; }
+.actions > button { display: grid; grid-template-columns: minmax(0, 1fr) auto 20px; align-items: center; gap: 15px; width: 100%; padding: 18px 0; border: 0; border-top: 1px solid #dce1d8; background: transparent; color: #1c2c22; text-align: left; }
+.actions > button:hover { color: #08764e; }
+.actions strong { font-size: 14px; }
+.actions small { color: #708075; font: 11px/1.4 Consolas, monospace; }
+.actions button > span { font-size: 18px; }
+
+.reports { display: flex; flex-direction: column; min-height: 660px; padding: 30px 32px 32px; background: #e4e9df; }
+.clear-button { padding: 4px 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: #276a46; font-size: 12px; font-weight: 700; }
+.clear-button:disabled { color: #96a197; cursor: default; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filters button { padding: 7px 13px; border: 1px solid #bfcdc0; border-radius: 999px; background: transparent; color: #45584a; font-size: 11px; font-weight: 700; }
+.filters button.active { border-color: #1b6d45; background: #1b6d45; color: white; }
+.report-list { min-height: 170px; max-height: 250px; overflow: auto; border-radius: 10px; background: #f8f9f4; }
+.report-list button { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 13px 14px; border: 0; border-bottom: 1px solid #e3e8df; background: transparent; text-align: left; }
+.report-list button:hover, .report-list button.selected { background: #edf5ed; }
+.report-type { width: 7px; height: 7px; border-radius: 50%; background: #7e8d83; }
+.report-type[data-type="error"] { background: #c44d38; }
+.report-type[data-type="behavior"] { background: #0c9160; }
+.report-type[data-type="performance"] { background: #c48b28; }
+.report-name { display: grid; min-width: 0; gap: 3px; }
+.report-name strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.report-name small, .report-list time { color: #69786d; font: 11px/1.35 Consolas, monospace; }
+.report-list time { font-variant-numeric: tabular-nums; }
+.empty-state { display: grid; place-items: center; min-height: 170px; padding: 25px; border-radius: 10px; background: #f8f9f4; color: #647368; font-size: 12px; text-align: center; }
+.json-panel { flex: 1; min-height: 220px; max-height: 330px; margin: 14px 0 0; padding: 20px; overflow: auto; border-radius: 10px; background: #18291f; color: #cde5d4; font: 11px/1.65 Consolas, monospace; tab-size: 2; }
+
+@media (max-width: 900px) {
+  .intro, .demo-grid { grid-template-columns: 1fr; }
+  .intro { gap: 28px; padding-top: 56px; }
+  .install-code { max-width: 520px; }
+  .reports { min-height: 560px; }
+}
+
+@media (max-width: 540px) {
+  .shell { padding-inline: 16px; padding-bottom: 32px; }
+  .topbar { min-height: 68px; }
+  .brand { font-size: 17px; }
+  .brand small { margin-left: 6px; font-size: 10px; }
+  .sdk-status { font-size: 10px; }
+  .intro { padding: 46px 0 34px; }
+  .intro h1 { font-size: 40px; }
+  .intro p { font-size: 13px; }
+  .demo-grid, .left-column { gap: 16px; }
+  .route-panel, .actions, .reports { padding: 24px 20px; }
+  .actions > button { grid-template-columns: minmax(0, 1fr) 20px; }
+  .actions small { display: none; }
+  .json-panel { min-height: 210px; }
+}

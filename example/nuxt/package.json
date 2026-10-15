@@ -1,0 +1,19 @@
+{
+  "name": "@weils-monitor/example-nuxt",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@weils-monitor/nuxt": "workspace:*",
+    "nuxt": "^3.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vue-tsc": "^3.3.13"
+  }
+}
