@@ -1,0 +1,17 @@
+# @weils-monitor/core
+
+## 1.1.0
+
+### Minor Changes
+
+- 34b86da: Extract framework-independent collectors and the report pipeline into core. Vue and Nuxt now register their framework-specific collectors through the core factory and collector registry. Remove the uniapp package from the workspace.
+- 34b86da: add core modules
+
+### Patch Changes
+
+- Updated dependencies [34b86da]
+- Updated dependencies [34b86da]
+- Updated dependencies [34b86da]
+- Updated dependencies [5690cf1]
+  - @weils-monitor/shared@1.1.0
+  - @weils-monitor/utils@1.1.0

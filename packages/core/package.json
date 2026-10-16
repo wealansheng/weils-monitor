@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/core",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Framework-independent browser monitoring runtime",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -13,13 +13,17 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*",
     "@weils-monitor/utils": "workspace:*"
