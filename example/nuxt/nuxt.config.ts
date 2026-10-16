@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   // Avoid Nuxt's dev startup race while resolving #app-manifest.
   experimental: { appManifest: false },
-  cyMonitor: {
+  nuxtMonitor: {
     url: '/api/monitor',
     appId: 'nuxt-example',
     projectName: 'weils-monitor-nuxt-example',

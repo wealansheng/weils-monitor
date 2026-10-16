@@ -7,7 +7,7 @@ export type { ModuleOptions, NuxtMonitorOptions } from './types'
 const monitorModule: NuxtModule<ModuleOptions, ModuleOptions, false> = defineNuxtModule<ModuleOptions>({
   meta: {
     name: '@weils-monitor/nuxt',
-    configKey: 'cyMonitor',
+    configKey: 'nuxtMonitor',
   },
   defaults: {
     url: '',

@@ -1,7 +1,7 @@
 import type { InitOptions, QueueReportData } from '@weils-monitor/shared'
 
 /**
- * `nuxt.config.ts` 中 `cyMonitor` 的配置类型。
+ * `nuxt.config.ts` 中 `nuxtMonitor` 的配置类型。
  *
  * 除 Vue 子包的 `InitOptions` 外，额外提供三个 Nuxt 专属采集开关，默认全部开启，
  * 设为 `false` 即可关闭对应能力。

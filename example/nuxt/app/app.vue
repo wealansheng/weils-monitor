@@ -129,7 +129,7 @@ onBeforeUnmount(() => window.removeEventListener('weils-monitor:report', receive
           <p>这个示例通过 <code>@weils-monitor/nuxt</code> 自动安装 Vue 监控，并额外采集水合耗时、服务端渲染耗时与 Nuxt 框架错误。右侧实时展示本页收到的事件，批量数据经 Nuxt 转发到 <code>localhost:8888/api/v1/monitor</code>。</p>
         </div>
         <pre class="install-code"><span>nuxt.config.ts</span><code>modules: ['@weils-monitor/nuxt'],
-cyMonitor: {
+nuxtMonitor: {
   url: '/api/monitor',
   appId: 'nuxt-example',
   batchSize: 20,
