@@ -17,3 +17,17 @@ export const getTTFBRating = (value: number): Rating => {
   if (value <= 1800) return 'needs-improvement'
   return 'poor'
 }
+
+/** 水合是客户端主线程工作，阈值与 INP 对齐：200ms / 500ms。 */
+export const getHydrationRating = (value: number): Rating => {
+  if (value <= 200) return 'good'
+  if (value <= 500) return 'needs-improvement'
+  return 'poor'
+}
+
+/** 服务端渲染耗时直接决定 TTFB，阈值 300ms / 1000ms。 */
+export const getSSRRating = (value: number): Rating => {
+  if (value <= 300) return 'good'
+  if (value <= 1000) return 'needs-improvement'
+  return 'poor'
+}

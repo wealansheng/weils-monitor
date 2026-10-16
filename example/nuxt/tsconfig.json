@@ -1,0 +1,12 @@
+{
+  // Nuxt 4 生成的项目引用：app / server / shared / node。
+  // `files: []` 是必需的（nuxi typecheck 会据此改用 `vue-tsc -b` 构建模式，
+  // 从而连同 server 项目一起检查）；缺少它时 Nuxt 会提示只检查了 app 项目。
+  "files": [],
+  "references": [
+    { "path": "./.nuxt/tsconfig.app.json" },
+    { "path": "./.nuxt/tsconfig.server.json" },
+    { "path": "./.nuxt/tsconfig.shared.json" },
+    { "path": "./.nuxt/tsconfig.node.json" }
+  ]
+}

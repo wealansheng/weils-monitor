@@ -10,6 +10,10 @@ export default defineNuxtConfig({
     projectName: 'weils-monitor-nuxt-example',
     batchSize: 20,
     clickAttributes: ['custom-data'],
+    // Nuxt 专属采集能力，三个开关默认都是 true。
+    hydration: true,
+    ssr: true,
+    frameworkErrors: true,
     debug: false,
   },
   css: ['~/assets/main.css'],

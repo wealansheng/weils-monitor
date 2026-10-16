@@ -19,5 +19,6 @@ export const config: InitOptions = {
     batchSize: 20,
     maxBatchBytes: 50 * 1024,
     sampleRate: 1,
+    resourceDurationThreshold: 100,
     debug: false,
 }

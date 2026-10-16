@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@weils-monitor/nuxt": "workspace:*",
-    "nuxt": "^3.0.0"
+    "nuxt": "^4.6.1"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

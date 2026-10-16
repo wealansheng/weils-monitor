@@ -6,6 +6,7 @@ import * as behaviorCollectors from './behavior';
 import * as stabilityCollectors from './stability';
 
 import { setConfig } from '@weils-monitor/utils';
+import { createMonitorCore } from '@weils-monitor/core';
 import { VERSION } from '@weils-monitor/shared';
 import type { InitOptions, VueReportData } from '@weils-monitor/shared';
 import type { App, ComponentPublicInstance } from 'vue';
@@ -59,21 +60,14 @@ export const init = (options: InitOptions): void => {
 
 /** Create the plugin and its collector controls from a configuration module. */
 export const createMonitor = (options: InitOptions) => {
-  init(options);
+  const core = createMonitorCore(options);
   let installedApp: App | undefined;
 
-  const started = new Set<string>();
   const once = <Args extends unknown[], Result>(
     name: string,
     start: (...args: Args) => Result,
   ): ((...args: Args) => Result) => {
-    let result: Result;
-    return (...args: Args): Result => {
-      if (started.has(name)) return result;
-      started.add(name);
-      result = start(...args);
-      return result;
-    };
+    return (...args: Args): Result => core.collectors.start(name, () => start(...args));
   };
 
   const error = { error: once('error', errorCollectors.error) };
@@ -122,7 +116,7 @@ export const createMonitor = (options: InitOptions) => {
     behavior,
     performance,
     stability,
-    report,
+    report: core.report,
   };
 
   return monitor;

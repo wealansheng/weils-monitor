@@ -1,7 +1,7 @@
 {
-  "name": "@weils-monitor/uniapp",
+  "name": "@weils-monitor/core",
   "version": "1.0.1",
-  "description": "uni-app 适配层",
+  "description": "Framework-independent browser monitoring runtime",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -13,23 +13,18 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
-  "publishConfig": {
-    "access": "public"
-  },
+  "publishConfig": { "access": "public" },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*",
     "@weils-monitor/utils": "workspace:*"
   },
   "devDependencies": {
-    "@dcloudio/types": "^3.4.32",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   }

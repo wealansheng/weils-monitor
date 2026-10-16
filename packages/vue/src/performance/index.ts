@@ -1,12 +1,6 @@
-export * from './observerEntries'
-export * from './observerFCP'
-export * from './observerFID'
-export * from './observerFP'
-export * from './observerLCP'
-export * from './observerLoad'
-export * from './observerINP'
-// export * from './observerPaint'
-
-export * from './observerCLS'
-export * from './observerTTFB'
-export * from './observerLongTask'
+export {
+  observerEntries, observerEvent, getResourceDurationThreshold,
+  DEFAULT_RESOURCE_DURATION_THRESHOLD, observerFCP, observerFID,
+  observerFP, observerLCP, observerLoad, observerINP, observerCLS,
+  observerHandler, observeTTFB, observerLongTask,
+} from '@weils-monitor/core'

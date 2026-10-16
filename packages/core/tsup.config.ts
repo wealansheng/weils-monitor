@@ -6,10 +6,7 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  external: ['vue', '@dcloudio/uni-app'],
   outExtension({ format }) {
-    return {
-      js: format === 'esm' ? '.mjs' : '.cjs',
-    }
+    return { js: format === 'esm' ? '.mjs' : '.cjs' }
   },
 })

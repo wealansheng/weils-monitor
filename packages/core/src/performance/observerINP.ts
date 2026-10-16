@@ -41,7 +41,7 @@ export const observerINP = () => {
         type: 'event',
         buffered: true,
         durationThreshold: 16, // 降低捕获门槛，以收集更全面的交互数据
-    });
+    } as PerformanceObserverInit);
 
     document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {

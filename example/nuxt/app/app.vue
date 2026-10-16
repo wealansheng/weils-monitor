@@ -81,6 +81,24 @@ const reportCustomEvent = (): void => {
   })
 }
 
+// 走 Nuxt 自己的 app:error 通道：createError 生成的 NuxtError 会被上报为 nuxt_error。
+const triggerNuxtAppError = (): void => {
+  void nuxtApp.callHook('app:error', createError({
+    statusCode: 500,
+    statusMessage: 'Nuxt 演示错误',
+    message: 'Nuxt 示例：应用级错误（app:error）',
+  }))
+}
+
+const triggerNuxtErrorCleared = (): void => {
+  void nuxtApp.callHook('app:error:cleared', {})
+}
+
+// 必须是整页导航：客户端路由跳转不经过服务端渲染，不会产生 SSR 错误。
+const openSsrErrorPage = (): void => {
+  window.location.href = '/ssr-error'
+}
+
 const clearReports = (): void => {
   reports.value = []
   selectedId.value = null
@@ -108,7 +126,7 @@ onBeforeUnmount(() => window.removeEventListener('weils-monitor:report', receive
       <section class="intro">
         <div>
           <h1>在 Nuxt 中<br>看见每一次上报。</h1>
-          <p>这个示例通过 <code>@weils-monitor/nuxt</code> 自动安装 Vue 监控。右侧实时展示本页收到的事件，批量数据经 Nuxt 转发到 <code>localhost:8888/api/v1/monitor</code>。</p>
+          <p>这个示例通过 <code>@weils-monitor/nuxt</code> 自动安装 Vue 监控，并额外采集水合耗时、服务端渲染耗时与 Nuxt 框架错误。右侧实时展示本页收到的事件，批量数据经 Nuxt 转发到 <code>localhost:8888/api/v1/monitor</code>。</p>
         </div>
         <pre class="install-code"><span>nuxt.config.ts</span><code>modules: ['@weils-monitor/nuxt'],
 cyMonitor: {
@@ -116,6 +134,9 @@ cyMonitor: {
   appId: 'nuxt-example',
   batchSize: 20,
   clickAttributes: ['custom-data'],
+  hydration: true,
+  ssr: true,
+  frameworkErrors: true,
 }</code></pre>
       </section>
 
@@ -135,6 +156,9 @@ cyMonitor: {
             <button type="button" custom-data="nuxt_custom_click"><strong>自定义点击</strong><small>custom-data 属性配置</small><span aria-hidden="true">↗</span></button>
             <button type="button" plugin-action="nuxt_plugin_click"><strong>插件扩展点击</strong><small>自定义 client 插件配置</small><span aria-hidden="true">↗</span></button>
             <button type="button" @click="reportCustomEvent"><strong>自定义事件上报</strong><small>$monitor.report()</small><span aria-hidden="true">↗</span></button>
+            <button type="button" @click="triggerNuxtAppError"><strong>Nuxt 应用错误</strong><small>nuxt_error</small><span aria-hidden="true">↗</span></button>
+            <button type="button" @click="triggerNuxtErrorCleared"><strong>清除错误状态</strong><small>nuxt_error_cleared</small><span aria-hidden="true">↗</span></button>
+            <button type="button" @click="openSsrErrorPage"><strong>SSR 渲染错误</strong><small>整页加载 /ssr-error</small><span aria-hidden="true">↗</span></button>
           </section>
         </div>
 

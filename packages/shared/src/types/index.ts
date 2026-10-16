@@ -183,6 +183,11 @@ export interface InitOptions {
   maxBatchBytes?: number
   /** 本批数据采用的采样率，写入批量包 sample_rate。 */
   sampleRate?: number
+  /**
+   * resource 事件的最小耗时阈值（毫秒），默认 100。
+   * 低于该值的资源（缓存命中、极快请求）不上报；设为 0 表示不过滤、全部上报。
+   */
+  resourceDurationThreshold?: number
   /** 开启后 SDK 会把每条规范化后的数据打印到控制台。 */
   debug?: boolean
 }

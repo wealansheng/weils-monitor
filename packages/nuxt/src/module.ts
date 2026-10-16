@@ -1,11 +1,8 @@
-import { addPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
+import { addPlugin, addServerPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
 import type { NuxtModule } from 'nuxt/schema'
-import type { InitOptions } from '@weils-monitor/shared'
+import type { ModuleOptions } from './types'
 
-export interface ModuleOptions extends InitOptions {
-  /** Attributes whose values are reported as custom click actions. */
-  clickAttributes?: string[]
-}
+export type { ModuleOptions, NuxtMonitorOptions } from './types'
 
 const monitorModule: NuxtModule<ModuleOptions, ModuleOptions, false> = defineNuxtModule<ModuleOptions>({
   meta: {
@@ -15,12 +12,20 @@ const monitorModule: NuxtModule<ModuleOptions, ModuleOptions, false> = defineNux
   defaults: {
     url: '',
     appId: '',
+    hydration: true,
+    ssr: true,
+    frameworkErrors: true,
   },
   setup(options, nuxt) {
     nuxt.options.runtimeConfig.public.weilsMonitor = options
 
     const resolver = createResolver(import.meta.url)
     addPlugin({ src: resolver.resolve('./runtime/plugin.client'), mode: 'client' })
+
+    // 服务端只在需要时注入：它仅负责把渲染耗时写进 Server-Timing 响应头。
+    if (options.ssr !== false && nuxt.options.ssr !== false) {
+      addServerPlugin(resolver.resolve('./runtime/server/plugin'))
+    }
   },
 })
 

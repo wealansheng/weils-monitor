@@ -5,16 +5,19 @@
     "dev": "turbo run dev --filter=./packages/*",
     "dev:shared": "turbo run dev --filter=@weils-monitor/shared",
     "dev:utils": "turbo run dev --filter=@weils-monitor/utils",
-    "dev:vue": "turbo run dev --filter=@weils-monitor/vue --filter=@weils-monitor/example-vue",
-    "dev:nuxt": "turbo run build --filter=@weils-monitor/nuxt... && turbo run dev --filter=@weils-monitor/nuxt --filter=@weils-monitor/example-nuxt",
-    "dev:uniapp": "turbo run dev --filter=@weils-monitor/uniapp",
+    "dev:core": "turbo run build --filter=@weils-monitor/core... && turbo run dev --filter=@weils-monitor/core",
+    "dev:vue": "turbo run build --filter=@weils-monitor/vue... && turbo run dev --filter=@weils-monitor/core --filter=@weils-monitor/vue --filter=@weils-monitor/example-vue",
+    "dev:nuxt": "turbo run build --filter=@weils-monitor/nuxt... && turbo run dev --filter=@weils-monitor/core --filter=@weils-monitor/nuxt --filter=@weils-monitor/example-nuxt",
     "build": "turbo run build --filter=./packages/*",
     "build:all": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "verify:exports": "node scripts/check-exports.mjs",
     "smoke:report": "node scripts/smoke-report.mjs",
+    "smoke:core": "node packages/core/scripts/smoke-core.mjs",
     "smoke:timing": "node packages/vue/scripts/smoke-timing.mjs",
+    "smoke:resource": "node packages/vue/scripts/smoke-resource.mjs",
+    "smoke:nuxt": "node packages/nuxt/scripts/smoke-nuxt.mjs",
     "clean": "node scripts/clean.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
@@ -29,7 +32,7 @@
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {
-    "node": "^20.19.0 || >=22.12.0",
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0",
     "pnpm": ">=9 <10"
   }
 }

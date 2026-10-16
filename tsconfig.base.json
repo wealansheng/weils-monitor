@@ -13,9 +13,9 @@
     "paths": {
       "@weils-monitor/shared": ["./packages/shared/src"],
       "@weils-monitor/utils": ["./packages/utils/src"],
+      "@weils-monitor/core": ["./packages/core/src"],
       "@weils-monitor/vue": ["./packages/vue/src"],
-      "@weils-monitor/nuxt": ["./packages/nuxt/src"],
-      "@weils-monitor/uniapp": ["./packages/uniapp/src"]
+      "@weils-monitor/nuxt": ["./packages/nuxt/src"]
     }
   },
   "exclude": ["node_modules", "dist"]

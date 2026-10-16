@@ -25,6 +25,7 @@
     "access": "public"
   },
   "dependencies": {
+    "@weils-monitor/core": "workspace:*",
     "@weils-monitor/shared": "workspace:*",
     "@weils-monitor/utils": "workspace:*"
   },
