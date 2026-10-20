@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/core",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Framework-independent browser monitoring runtime",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -26,7 +26,8 @@
   },
   "dependencies": {
     "@weils-monitor/shared": "workspace:*",
-    "@weils-monitor/utils": "workspace:*"
+    "@weils-monitor/utils": "workspace:*",
+    "error-stack-parser": "^2.1.4"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

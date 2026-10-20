@@ -1,5 +1,15 @@
 # @weils-monitor/vue
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @weils-monitor/shared@1.2.0
+  - @weils-monitor/core@1.2.0
+  - @weils-monitor/utils@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes

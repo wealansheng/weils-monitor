@@ -119,6 +119,8 @@ pnpm dev:nuxt # Nuxt 4 示例
 
 生产错误的 Source Map 私有上传与查询流程见 [Source Map 定位指南](docs/source-map.md)。
 
+错误事件会携带 `error-stack-parser` 解析的完整 `stack_frames` 和原始 `stack`，顶层 `filename/lineno/colno` 表示构建文件位置。生产接入须配置应用 `release`，与上传 map 时的版本一致。后端使用 `@jridgewell/trace-mapping` 读取私有 `mapdata`，工作台错误详情支持按调用帧查看源码及上下文；浏览器不需要访问 map 文件。
+
 ```bash
 pnpm build           # 构建所有 packages
 pnpm typecheck       # 检查 packages 与示例的类型

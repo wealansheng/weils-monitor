@@ -68,12 +68,22 @@ export interface PerformanceReportData extends BaseReportData {
   load?: number
 }
 
+/** Generated stack location. Lines and columns are 1-based when present. */
+export interface ErrorStackFrame {
+  filename?: string
+  lineno?: number
+  colno?: number
+  function_name?: string
+  raw?: string
+}
+
 export interface ErrorReportData extends BaseReportData {
   event_type: 'error'
   error_type: string
   message?: string
   name?: string
   stack?: string
+  stack_frames?: ErrorStackFrame[]
   filename?: string
   lineno?: number
   colno?: number

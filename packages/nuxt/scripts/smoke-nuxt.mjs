@@ -409,6 +409,10 @@ const setup = ({ serverRendered = true, payloadError, options = {} } = {}) => {
     assert.equal(sent[0].release, 'test-release')
     assert.equal(sent[0].page_url, '/ssr-error')
     assert.equal(sent[0].stack, error.stack)
+    assert.equal(sent[0].filename, 'file:///app/.output/server/chunks/build/page.mjs')
+    assert.equal(sent[0].lineno, 3)
+    assert.equal(sent[0].colno, 4)
+    assert.equal(sent[0].stack_frames.length, 1)
   } finally {
     globalThis.fetch = previous.fetch
     for (const [name, value] of [

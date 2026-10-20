@@ -1,5 +1,15 @@
 # @weils-monitor/shared
 
+## 1.2.0
+
+### Minor Changes
+
+- Report generated stack frames for browser and framework errors using error-stack-parser, preserve caller-provided locations, and enrich Nitro SSR errors for private source-map symbolication.
+
+### Patch Changes
+
+- 捕获&解析,上报错误堆栈
+
 ## 1.1.0
 
 ### Minor Changes

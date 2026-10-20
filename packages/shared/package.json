@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/shared",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "跨端共享的类型与常量",
   "type": "module",
   "main": "./dist/index.cjs",

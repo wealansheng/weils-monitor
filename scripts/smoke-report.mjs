@@ -254,3 +254,31 @@ assert.equal(zeroCLSPayload.events[0].value, 0);
 assert.equal(zeroCLSPayload.events[0].rating, 'good');
 
 console.log('✅ 冒烟验证通过：字段规范化、批量包、退出冲刷及 CLS 上报均正常');
+
+// Real collector hooks, including Promise and Vue errors, share stack enrichment.
+utils.setConfig({ release: 'app-release-test' });
+vue.default.error.error();
+const stackError = new Error('collector failure');
+stackError.stack = 'Error: collector failure\n    at render (https://cdn.test/app.js:7:11)\n    at https://cdn.test/vendor.js:2:3';
+fakeWindow.onerror('collector failure', 'https://cdn.test/app.js', 7, 11, stackError);
+const rejection = new Event('unhandledrejection');
+Object.defineProperty(rejection, 'reason', { value: stackError });
+fakeWindow.dispatchEvent(rejection);
+const app = { config: { globalProperties: {} }, mixin() {} };
+vue.install(app);
+app.config.errorHandler(stackError, null, 'render');
+await flush();
+for (const error_type of ['js_error', 'promise_error', 'framework_error']) {
+  const item = dispatchedEvents.findLast((event) => event.error_type === error_type);
+  assert.equal(item.stack_frames.length, 2);
+  assert.equal(item.filename, 'https://cdn.test/app.js');
+  assert.equal(item.lineno, 7);
+  assert.equal(item.colno, 11);
+  assert.equal(item.release, 'app-release-test');
+}
+const stringRejection = new Event('unhandledrejection');
+Object.defineProperty(stringRejection, 'reason', { value: 'plain rejection' });
+fakeWindow.dispatchEvent(stringRejection);
+assert.equal(dispatchedEvents.at(-1).filename, undefined);
+await flush();
+console.log('✅ JS、Promise、Vue 错误采集器与应用 release 上报验证通过');

@@ -2,6 +2,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-10-15',
   modules: ['@weils-monitor/nuxt'],
   sourcemap: { client: 'hidden', server: 'hidden' },
+  nitro: {
+    // Nitro excludes embedded sources by default; private symbolication needs them.
+    rollupConfig: { output: { sourcemapExcludeSources: false } },
+    experimental: { sourcemapMinify: false },
+  },
   devtools: { enabled: false },
   // Avoid Nuxt's dev startup race while resolving #app-manifest.
   experimental: { appManifest: false },

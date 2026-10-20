@@ -2,6 +2,7 @@ import { config } from '@weils-monitor/shared'
 import type { InitOptions, QueueReportData } from '@weils-monitor/shared'
 import { flushReportQueue, lazyReportBatch, setConfig } from '@weils-monitor/utils'
 import { collectCommonFields } from './context'
+import { enrichErrorStack } from './error/stack'
 
 export type ReportHandler = (data: QueueReportData) => void
 export type ReportDecorator = (next: ReportHandler) => ReportHandler
@@ -57,6 +58,7 @@ export const normalizeReportData = (
   data: QueueReportData,
   adapter: ReportAdapter = browserAdapter,
 ): QueueReportData => {
+  if (data.event_type === 'error') data = enrichErrorStack(data)
   const timestamp = Number(data.timestamp)
   return {
     ...adapter.collect(),

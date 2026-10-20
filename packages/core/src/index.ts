@@ -8,4 +8,5 @@ export type { ReportAdapter, ReportStrategy, ReportHandler, ReportDecorator } fr
 export * from './performance'
 export * from './behavior'
 export * from './error'
+export { parseErrorStack, enrichErrorStack } from './error/stack'
 export * from './stability'

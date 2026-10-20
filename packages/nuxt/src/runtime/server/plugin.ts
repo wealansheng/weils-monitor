@@ -1,4 +1,5 @@
 import { SSR_TIMING_NAME } from '../constants'
+import { enrichErrorStack } from '@weils-monitor/core'
 
 /**
  * Nitro 服务端插件：测量服务端处理/渲染耗时，并写入 `Server-Timing` 响应头。
@@ -115,7 +116,7 @@ export const createSsrTimingPlugin = (
           await fetch(endpoint, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
+            body: JSON.stringify(enrichErrorStack({
               event_id: globalThis.crypto.randomUUID(),
               event_type: 'error',
               error_type: 'nuxt_ssr_error',
@@ -126,7 +127,7 @@ export const createSsrTimingPlugin = (
               name: error.name,
               stack: error.stack,
               page_url: pathname,
-            }),
+            })),
             signal: AbortSignal.timeout(5000),
           })
         } catch {
