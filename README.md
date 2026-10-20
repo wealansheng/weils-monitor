@@ -117,6 +117,8 @@ pnpm dev:nuxt # Nuxt 4 示例
 
 ## 开发与发布
 
+生产错误的 Source Map 私有上传与查询流程见 [Source Map 定位指南](docs/source-map.md)。
+
 ```bash
 pnpm build           # 构建所有 packages
 pnpm typecheck       # 检查 packages 与示例的类型

@@ -1,12 +1,14 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-10-15',
   modules: ['@weils-monitor/nuxt'],
+  sourcemap: { client: 'hidden', server: 'hidden' },
   devtools: { enabled: false },
   // Avoid Nuxt's dev startup race while resolving #app-manifest.
   experimental: { appManifest: false },
   nuxtMonitor: {
     url: '/api/monitor',
     appId: 'nuxt-example',
+    release: process.env.MONITOR_RELEASE || 'local',
     projectName: 'weils-monitor-nuxt-example',
     batchSize: 20,
     clickAttributes: ['custom-data'],

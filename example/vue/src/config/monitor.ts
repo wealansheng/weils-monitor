@@ -4,6 +4,7 @@ export const monitor = createMonitor({
   url: '/api/v1/monitor',
   projectName: 'weils-monitor-example',
   appId: 'vue-example',
+  release: import.meta.env.VITE_MONITOR_RELEASE || 'local',
   userId: 'visitor',
   isImageUpload: false,
   batchSize: 20,

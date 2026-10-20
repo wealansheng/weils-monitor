@@ -378,6 +378,50 @@ const setup = ({ serverRendered = true, payloadError, options = {} } = {}) => {
   assert.equal(orphanRes.headers['server-timing'], undefined)
 }
 
+/* -------------------------------------------------------------------------- *
+ * 9. 服务端错误：直接上传 Nitro 原始堆栈，避免生产 payload 丢失 stack
+ * -------------------------------------------------------------------------- */
+
+{
+  const previous = {
+    endpoint: process.env.MONITOR_SSR_ENDPOINT,
+    appId: process.env.MONITOR_SSR_APP_ID,
+    release: process.env.MONITOR_RELEASE,
+    fetch: globalThis.fetch,
+  }
+  process.env.MONITOR_SSR_ENDPOINT = 'http://localhost:8888/api/v1/monitor'
+  process.env.MONITOR_SSR_APP_ID = 'nuxt-example'
+  process.env.MONITOR_RELEASE = 'test-release'
+  const sent = []
+  globalThis.fetch = async (_url, options) => {
+    sent.push(JSON.parse(options.body))
+    return { ok: true }
+  }
+  try {
+    const hooks = new Map()
+    createSsrTimingPlugin()({ hooks: { hook: (name, handler) => hooks.set(name, handler) } })
+    const error = new Error('SSR failed')
+    error.stack = 'Error: SSR failed\n    at file:///app/.output/server/chunks/build/page.mjs:3:4'
+    await hooks.get('error')(error, { event: { path: '/ssr-error?token=hidden' } })
+    await hooks.get('error')(error, { event: { path: '/ssr-error' } })
+    assert.equal(sent.length, 1, '同一服务端错误只上报一次')
+    assert.equal(sent[0].error_type, 'nuxt_ssr_error')
+    assert.equal(sent[0].release, 'test-release')
+    assert.equal(sent[0].page_url, '/ssr-error')
+    assert.equal(sent[0].stack, error.stack)
+  } finally {
+    globalThis.fetch = previous.fetch
+    for (const [name, value] of [
+      ['MONITOR_SSR_ENDPOINT', previous.endpoint],
+      ['MONITOR_SSR_APP_ID', previous.appId],
+      ['MONITOR_RELEASE', previous.release],
+    ]) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+}
+
 console.log(
   '✅ Nuxt 冒烟验证通过：水合耗时、SSR 耗时（Server-Timing）、SSR 错误补报、'
   + 'app:error / chunkError / error:cleared、组件错误去重、开关与响应头写入',

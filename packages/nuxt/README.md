@@ -68,3 +68,5 @@ export default defineNuxtConfig({
 ```
 
 SSR 耗时依赖浏览器读取 Navigation Timing 的 `serverTiming`；不支持时跳过该指标。完整 Nuxt 4 演示见 [`example/nuxt`](../../example/nuxt)。
+
+生产 Nuxt 会从客户端 payload 中移除服务端错误堆栈。要用私有 Source Map 定位 SSR 错误，在运行 Nitro 的环境中设置 `MONITOR_SSR_ENDPOINT`（绝对 HTTP 上报地址）、`MONITOR_SSR_APP_ID`（与 `nuxtMonitor.appId` 相同）和 `MONITOR_RELEASE`（与 `nuxtMonitor.release` 相同）。Nitro 错误钩子会直接上报带原始堆栈的 `nuxt_ssr_error`；客户端仍会补报不含堆栈的简要错误。完整流程见 [Source Map 定位指南](../../docs/source-map.md)。

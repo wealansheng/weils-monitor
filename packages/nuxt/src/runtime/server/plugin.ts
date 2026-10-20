@@ -8,8 +8,8 @@ import { SSR_TIMING_NAME } from '../constants'
  * ```
  *
  * 客户端读取该响应头后按 `nuxt_ssr_render` 性能事件上报（见 `../ssr.ts`）。
- * 之所以在服务端只写响应头而不直接上报：SDK 的上报通道（XHR / sendBeacon / Image）
- * 只在浏览器可用，服务端没有可用的传输方式；由客户端上报还能复用同一套队列与批量规则。
+ * 配置 MONITOR_SSR_ENDPOINT、MONITOR_SSR_APP_ID、MONITOR_RELEASE 后，Nitro 的 error
+ * 钩子还会直接上报服务端原始堆栈。生产 Nuxt 的客户端 payload 通常不包含该堆栈。
  *
  * 两个钩子都来自 Nitro 运行时（`request` / `beforeResponse`，见 nitropack 的
  * `internal/app.mjs`），这里不依赖 `defineNitroPlugin` 自动导入：Nitro 直接以
@@ -38,7 +38,8 @@ interface NodeResponseLike {
 }
 
 interface H3EventLike {
-  node?: { res?: NodeResponseLike }
+  path?: string
+  node?: { res?: NodeResponseLike; req?: { url?: string } }
 }
 
 interface NitroResponseLike {
@@ -98,6 +99,42 @@ export const createSsrTimingPlugin = (
   const starts = new WeakMap<object, number>()
 
   return (nitroApp: NitroAppLike): void => {
+    const errorEndpoint = process.env.MONITOR_SSR_ENDPOINT
+    const appId = process.env.MONITOR_SSR_APP_ID
+    const release = process.env.MONITOR_RELEASE
+    if (errorEndpoint && appId && release) {
+      const reported = new WeakSet<object>()
+      nitroApp.hooks.hook('error', async (error: Error, context?: { event?: H3EventLike }) => {
+        const event = context?.event
+        const pathname = (event?.path ?? event?.node?.req?.url ?? '').split('?')[0]
+        if (!event || pathname.startsWith('/api/') || !error?.stack || reported.has(error)) return
+        reported.add(error)
+        try {
+          const endpoint = new URL(errorEndpoint)
+          if (!['http:', 'https:'].includes(endpoint.protocol)) return
+          await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              event_id: globalThis.crypto.randomUUID(),
+              event_type: 'error',
+              error_type: 'nuxt_ssr_error',
+              timestamp: Date.now(),
+              app_id: appId,
+              release,
+              message: error.message,
+              name: error.name,
+              stack: error.stack,
+              page_url: pathname,
+            }),
+            signal: AbortSignal.timeout(5000),
+          })
+        } catch {
+          // 监控服务不可用时不能影响原始 SSR 错误响应。
+        }
+      })
+    }
+
     nitroApp.hooks.hook('request', (event: object) => {
       if (event && typeof event === 'object') starts.set(event, now())
     })

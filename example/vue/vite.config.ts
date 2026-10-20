@@ -4,7 +4,15 @@ import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
   plugins: [vue()],
+  build: { sourcemap: 'hidden' },
+  preview: {
+    proxy: {
+      '/api': { target: 'http://localhost:8888', changeOrigin: true },
+    },
+  },
   server: {
+    host: '0.0.0.0',
+    allowedHosts: ['mdh0atwwji.app.orbitproxy.cloud'],
     proxy: {
       '/api': {
         target: 'http://localhost:8888',
