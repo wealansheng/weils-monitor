@@ -7,15 +7,15 @@ export default defineConfig({
   build: { sourcemap: 'hidden' },
   preview: {
     proxy: {
-      '/api': { target: 'https://forum.wealans.top:8888', changeOrigin: true },
+      '/api': { target: 'https://xxx.xxxxxxx.xxx:8888', changeOrigin: true },
     },
   },
   server: {
     host: '0.0.0.0',
-    // allowedHosts: ['mdh0atwwji.app.orbitproxy.cloud'],
+    // allowedHosts: ['xxx.xxxxxxx.xxx'],
     proxy: {
       '/api': {
-        target: 'https://forum.wealans.top:8888',
+        target: 'https://xxx.xxxxxxx.xxx:8888',
         changeOrigin: true,
       },
     },

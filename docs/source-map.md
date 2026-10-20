@@ -21,7 +21,7 @@ map 统一保存到后端根目录 `mapdata`，容器中挂载持久化目录到
 ```powershell
 pnpm --filter @weils-monitor/example-vue build
 if ($LASTEXITCODE -ne 0) { throw '构建失败，停止发布' }
-npm --prefix D:\wealsCode\monitor-backend run sourcemaps:upload
+npm --prefix D:\path\to\monitor-backend run sourcemaps:upload
 if ($LASTEXITCODE -ne 0) { throw 'Source Map 上传失败，停止发布' }
 # 在这里运行实际部署命令；公开产物中此时已无 .map。
 ```
@@ -38,9 +38,9 @@ $env:SOURCEMAP_SERVER = 'http://localhost:8888'
 $env:SOURCEMAP_ADMIN_TOKEN = '<与后端配置相同的令牌>'
 $env:SOURCEMAP_APP_ID = 'vue-example'
 $env:SOURCEMAP_RELEASE = $env:VITE_MONITOR_RELEASE
-$env:SOURCEMAP_CLIENT_DIR = 'D:\wealsCode\weils-monitor\example\vue\dist'
+$env:SOURCEMAP_CLIENT_DIR = 'D:\path\to\weils-monitor\example\vue\dist'
 $env:SOURCEMAP_CLIENT_BASE_URL = 'http://localhost:4173/'
-npm --prefix D:\wealsCode\monitor-backend run sourcemaps:upload
+npm --prefix D:\path\to\monitor-backend run sourcemaps:upload
 if ($LASTEXITCODE -ne 0) { throw 'Source Map 上传失败，停止发布' }
 pnpm --filter @weils-monitor/example-vue preview
 ```
@@ -59,10 +59,10 @@ pnpm --filter @weils-monitor/example-nuxt build
 if ($LASTEXITCODE -ne 0) { throw '构建失败' }
 $env:SOURCEMAP_APP_ID = 'nuxt-example'
 $env:SOURCEMAP_RELEASE = $env:MONITOR_RELEASE
-$env:SOURCEMAP_CLIENT_DIR = 'D:\wealsCode\weils-monitor\example\nuxt\.output\public\_nuxt'
+$env:SOURCEMAP_CLIENT_DIR = 'D:\path\to\weils-monitor\example\nuxt\.output\public\_nuxt'
 $env:SOURCEMAP_CLIENT_BASE_URL = 'http://localhost:3000/_nuxt/'
-$env:SOURCEMAP_SERVER_DIR = 'D:\wealsCode\weils-monitor\example\nuxt\.output\server'
-npm --prefix D:\wealsCode\monitor-backend run sourcemaps:upload
+$env:SOURCEMAP_SERVER_DIR = 'D:\path\to\weils-monitor\example\nuxt\.output\server'
+npm --prefix D:\path\to\monitor-backend run sourcemaps:upload
 if ($LASTEXITCODE -ne 0) { throw 'Source Map 上传失败，停止发布' }
 $env:MONITOR_SSR_ENDPOINT = 'http://localhost:8888/api/v1/monitor'
 $env:MONITOR_SSR_APP_ID = 'nuxt-example'
