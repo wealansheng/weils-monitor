@@ -37,3 +37,11 @@ console.log(VERSION, config.batchSize, config.resourceDurationThreshold)
 ```
 
 `config` 是当前页面进程中的可变共享对象。业务配置建议通过 [`@weils-monitor/vue`](../vue/README.md) 的 `createMonitor`、[`@weils-monitor/nuxt`](../nuxt/README.md) 的 `nuxtMonitor`，或 [`@weils-monitor/utils`](../utils/README.md) 的 `setConfig` 设置。
+
+## Replay 公共类型
+
+本包还导出 `ReplayOptions`、`ReplayStatus`、`ReplayController`、`RecordError`、`RecordMetadata`、`RecordChunk`。`InitOptions.replay` 接受 `ReplayOptions`；通用 SDK 默认关闭，框架实例通过 core 创建控制器。
+
+录制协议使用 `protocol_version: 1`、`encoding: 'gzip-base64'`，每片是 `RecordMetadata` 加 `chunk_index`、`chunk_checksum`、`payload`。`errors` 保存错误 UUID 和时间；Replay 元信息使用 `project_name`，普通事件配置仍可用 `projectName`。录制不是 `QueueReportData` 的第七类事件，必须走独立 `/api/v1/records` 接口。
+
+顶层 `sampleRate` 只写入普通事件信封；`replay.sampleRate` 决定是否录制该会话。字段定义见 [`src/replay.ts`](src/replay.ts)，运行行为见 [Replay 文档](../replay/README.md)。

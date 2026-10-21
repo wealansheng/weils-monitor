@@ -11,6 +11,8 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "paths": {
+      "@weils-monitor/replay": ["./packages/replay/src"],
+      "@weils-monitor/replay/player": ["./packages/replay/src/player.ts"],
       "@weils-monitor/shared": ["./packages/shared/src"],
       "@weils-monitor/utils": ["./packages/utils/src"],
       "@weils-monitor/core": ["./packages/core/src"],

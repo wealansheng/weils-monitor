@@ -24,11 +24,12 @@ export const sanitizeUrl = (value: string): string => {
 export const isMonitorRequest = (value: string): boolean => {
   try {
     const candidate = new URL(value, window.location.href)
-    const endpoint = new URL(config.url, window.location.href)
     const normalizePath = (path: string): string => path.replace(/\/+$/, '') || '/'
-
-    return candidate.origin === endpoint.origin
-      && normalizePath(candidate.pathname) === normalizePath(endpoint.pathname)
+    return [config.url, config.replay?.enabled ? config.replay.url || '/api/v1/records' : undefined]
+      .filter((url): url is string => Boolean(url)).some(url => {
+        const endpoint = new URL(url, window.location.href)
+        return candidate.origin === endpoint.origin && normalizePath(candidate.pathname) === normalizePath(endpoint.pathname)
+      })
   } catch {
     return value === config.url
   }

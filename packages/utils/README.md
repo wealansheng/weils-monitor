@@ -42,3 +42,9 @@ getHydrationRating(550) // 'poor'
 ```
 
 `flushReportQueue` 支持 `transport: 'auto' | 'ajax' | 'image' | 'beacon'`；默认 `auto` 使用 AJAX。`beacon` 适合页面退出时冲刷。批量包中 `sample_rate` 目前仅记录配置值，不执行随机采样。
+
+## 与录制上传的边界
+
+这些队列工具只发送普通事件批量包，不管理 Replay 的 IndexedDB 缓存、压缩、分片及重试。`flushReportQueue()` 不会上传录制；使用框架实例的 `monitor.replay.flush()` 尝试上传已封存片段，或 `stop()` 提前结束已触发的错误窗口。
+
+`setConfig({ replay: ... })` 只更新共享配置，不能代替创建控制器；应在 `createMonitor`、`createMonitorCore` 或 Nuxt 模块初始化时配置 Replay。会话采样由 `replay.sampleRate` 独立决定，详见 [Replay 文档](../replay/README.md)。

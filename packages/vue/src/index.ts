@@ -117,6 +117,7 @@ export const createMonitor = (options: InitOptions) => {
     performance,
     stability,
     report: core.report,
+    replay: core.replay,
   };
 
   return monitor;

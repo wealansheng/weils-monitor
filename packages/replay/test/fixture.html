@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Replay test</title></head><body>
+<h1>录制测试</h1><input id="input" aria-label="内容"><input type="password" value="password-secret">
+<div class="rr-mask">private-text</div><div data-private>blocked-secret</div>
+<button id="mutate">改变 DOM</button><div id="output"></div><div style="height:2000px"></div>
+<script type="module">
+import { createRecorder } from '../src/index.ts'
+import { createReplayPlayer } from '../src/player.ts'
+import { decode } from '../src/codec.ts'
+import { createMonitorCore } from '../../core/src/runtime.ts'
+window.statuses = []
+window.createReplayPlayer = createReplayPlayer
+window.decode = decode
+window.begin = async (options = {}) => {
+  window.recorder = createRecorder({ appId: 'browser-test', sessionId: 'browser-session', beforeErrorMs: 1000,
+    afterErrorMs: 150, persistIntervalMs: 50, url: '/api/v1/records', onStatus: status => window.statuses.push(status), ...options })
+  await window.recorder.start()
+}
+window.beginMonitor = async (options = {}) => {
+  window.monitor = createMonitorCore({ appId: 'browser-integration', url: '/api/v1/monitor',
+    replay: { enabled: true, url: '/api/v1/records', beforeErrorMs: 1000, afterErrorMs: 150, persistIntervalMs: 50,
+      onStatus: status => window.statuses.push(status) }, ...options })
+  await window.monitor.replay.start()
+}
+document.querySelector('#mutate').onclick = () => { document.querySelector('#output').textContent = 'DOM changed' }
+</script></body></html>

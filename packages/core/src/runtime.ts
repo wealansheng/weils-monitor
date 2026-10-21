@@ -3,6 +3,7 @@ import type { InitOptions, QueueReportData } from '@weils-monitor/shared'
 import { flushReportQueue, lazyReportBatch, setConfig } from '@weils-monitor/utils'
 import { collectCommonFields } from './context'
 import { enrichErrorStack } from './error/stack'
+import { createReplayController } from './replay'
 
 export type ReportHandler = (data: QueueReportData) => void
 export type ReportDecorator = (next: ReportHandler) => ReportHandler
@@ -130,5 +131,7 @@ export const setupExitFlush = (): void => defaultReporter.setupExitFlush()
 export const createMonitorCore = (options: InitOptions) => {
   setConfig(options)
   setupExitFlush()
-  return { report, collectors: createCollectorRegistry() }
+  const replay = createReplayController()
+  if (options.replay?.enabled) void replay.start()
+  return { report, collectors: createCollectorRegistry(), replay }
 }

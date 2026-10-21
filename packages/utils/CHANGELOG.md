@@ -1,5 +1,17 @@
 # @weils-monitor/utils
 
+## 1.2.0
+
+### Minor Changes
+
+- 添加错误录制回放
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @weils-monitor/shared@1.3.0
+
 ## 1.1.1
 
 ### Patch Changes

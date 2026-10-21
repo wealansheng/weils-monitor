@@ -9,10 +9,21 @@
 | `@weils-monitor/vue` | Vue 3 应用的主要入口 | [Vue 使用示例](packages/vue/README.md) |
 | `@weils-monitor/nuxt` | Nuxt 3 / 4 模块，自动接入 Vue 监控 | [Nuxt 使用示例](packages/nuxt/README.md) |
 | `@weils-monitor/core` | 通用浏览器采集器、上报器工厂与采集注册表 | [core 使用示例](packages/core/README.md) |
+| `@weils-monitor/replay` | 错误前后录制、IndexedDB 持久化与独立回放入口 | [操作回放](packages/replay/README.md) |
 | `@weils-monitor/shared` | 事件类型、默认配置与常量 | [shared 使用示例](packages/shared/README.md) |
 | `@weils-monitor/utils` | 配置、队列发送与性能评分工具 | [utils 使用示例](packages/utils/README.md) |
 
 应用接入通常只需安装 Vue 或 Nuxt 包。core、shared 和 utils 供需要自定义采集或底层上报流程的场景使用。
+
+## 三个项目如何配合
+
+| 项目 | 职责 | 本地入口 |
+| --- | --- | --- |
+| 本仓库 `weils-monitor` | 在业务页面采集事件；开启 Replay 后录制并上传错误片段 | `pnpm dev:vue` / `pnpm dev:nuxt` |
+| [`monitor-backend`](../monitor-backend/README.md) | 接收事件和录制分片，写入 ClickHouse，提供管理查询 | `http://localhost:8888` |
+| [`monitor-frontend`](../monitor-frontend/README.md) | 查询事件、还原源码、播放错误关联录制 | `http://localhost:8866` |
+
+普通事件写入三张事件表；录制分片独立写入 `event_record`。管理工作台使用 `MONITOR_DASHBOARD_TOKEN` 查询，业务 SDK 不携带该令牌。完整联调步骤见 [Replay 接入与排障](docs/replay.md)。
 
 ## Vue 快速开始
 
@@ -98,6 +109,22 @@ useNuxtApp().$monitor?.report({
 
 示例仅展示主要字段；实际事件还会包含 `event_id`、`timestamp`、页面和设备等公共字段。`sample_rate` 当前记录配置值，不执行随机采样。资源性能事件默认只上报耗时至少 100 ms 的资源，可用 `resourceDurationThreshold: 0` 关闭过滤。
 
+## 错误录制与上传
+
+业务 SDK 的 Replay 默认关闭。需要录制时在 `createMonitor` 或 `nuxtMonitor` 中显式配置：
+
+```ts
+replay: {
+  enabled: true,
+  url: '/api/v1/records',
+  sampleRate: 1,
+  beforeErrorMs: 30_000,
+  afterErrorMs: 10_000,
+}
+```
+
+开启后异步启动录制；Vue 仍需调用 `monitor.observer()` 启动普通采集，Nuxt 模块会自动启动。仅已上报的 JS、Promise、Vue 和受支持的 Nuxt 客户端错误会触发片段上传。录制与普通事件使用不同接口及队列；`replay.sampleRate` 按会话实际采样。SDK 默认窗口为错误前 30 秒、后 10 秒；本仓库两个示例默认开启并缩短为前 10 秒、后 5 秒，示例只录制和上传，播放由管理工作台完成。
+
 ## 在仓库中运行示例
 
 仓库使用 pnpm workspace 和 Turbo。Node.js 要求 `^22.22.3 || ^24.15.0 || >=26.0.0`，pnpm 要求 9.x。
@@ -109,6 +136,8 @@ pnpm dev:nuxt # Nuxt 4 示例
 ```
 
 两个示例的 `/api` 请求都会转发到 `http://localhost:8888`。运行交互演示前，需要在该地址提供接收 `/api/v1/monitor` 的服务，或修改示例的代理目标。
+
+两个示例均默认开启 Replay 错误录制与上传：触发页面已有的错误按钮，约 5 秒后片段将上传到 `http://localhost:8888/api/v1/records`。启动方式与接收回执要求见 [Vue 示例说明](example/vue/README.md) 和 [Nuxt 示例说明](example/nuxt/README.md)。
 
 | 目录 | 内容 |
 | --- | --- |
@@ -123,13 +152,17 @@ pnpm dev:nuxt # Nuxt 4 示例
 
 ```bash
 pnpm build           # 构建所有 packages
-pnpm typecheck       # 检查 packages 与示例的类型
+pnpm typecheck       # 检查声明了 typecheck 任务的包与 Nuxt 示例
 pnpm verify:exports  # 校验 package.json 的产物入口
 pnpm smoke:core      # core 上报流程冒烟验证
 pnpm smoke:report    # 批量上报冒烟验证
 pnpm smoke:timing    # Vue 耗时冒烟验证
 pnpm smoke:resource  # 资源阈值冒烟验证
 pnpm smoke:nuxt      # Nuxt 专属采集冒烟验证
+pnpm --filter @weils-monitor/replay test      # 录制、编码、存储与播放校验
+pnpm --filter @weils-monitor/replay test:e2e  # 需先安装 Playwright Chromium
 ```
 
 发布使用 Changesets：先运行 `pnpm changeset` 记录变更，再运行 `pnpm version-packages` 和 `pnpm install` 更新版本与锁文件；确认发布权限后运行 `pnpm release`。该命令会构建、检查入口并发布未发布的新版本。
+
+各包 `CHANGELOG.md` 保留已发布版本历史；尚未发布的变更记录在 `.changeset/`，由版本命令生成正式日志。

@@ -2,6 +2,8 @@
 
 SDK 上报原始 `stack`、脚本位置和 `release`；同级项目 `monitor-backend` 私有保存构建后的 Source Map，并在查询错误事件时还原源码位置。`packages/*/dist` 中的 SDK map 无法代替应用最终构建的 map。
 
+Source Map 还原与 Replay 录制是两条独立链路，可在工作台的同一错误事件详情中查看：前者通过 `app_id + release` 匹配构建产物，后者通过 `app_id + event_id` 关联错误操作。录制上传和播放不要求先上传 map；联调见 [Replay 接入与排障](replay.md)。
+
 ## 采集与展示协议
 
 core 使用 `error-stack-parser` 将原始堆栈转换为按调用顺序排列的 `stack_frames`。每帧可包含 `filename`、`lineno`、`colno`、`function_name`、`raw`；JS、Promise、Vue、Nuxt 客户端错误共用归一化流程，Nitro 直接上报复用同一工具。已有有效的顶层文件、行列号优先，否则使用首个完整定位帧补齐。没有堆栈或解析失败时仍正常上报。
@@ -14,7 +16,7 @@ core 使用 `error-stack-parser` 将原始堆栈转换为按调用顺序排列�
 
 ## 私有存储与发布顺序
 
-map 统一保存到后端根目录 `mapdata`，容器中挂载持久化目录到 `/app/mapdata`。该目录不提供静态访问，禁止配置 Nginx `alias` 或静态服务器指向它。上传与管理查询受 `SOURCEMAP_ADMIN_TOKEN` 保护；工作台只能读取经过鉴权的定位结果，不能下载 map。
+map 统一保存到后端根目录 `mapdata`，容器中挂载持久化目录到 `/app/mapdata`。该目录不提供静态访问，禁止配置 Nginx `alias` 或静态服务器指向它。上传及旧 `/api/v1/monitor/errors/:eventId/symbolication` 查询使用 `SOURCEMAP_ADMIN_TOKEN`；工作台 `/api/v1/dashboard/errors/:eventId/symbolication` 使用 `MONITOR_DASHBOARD_TOKEN`，只能读取经过鉴权的定位结果，不能下载 map。
 
 发布必须顺序执行：构建 → 上传 → 清除部署产物中的 map → 部署。当前上传命令仅在全部上传成功后自动清除客户端与服务端构建目录中的 `.map`；`SOURCEMAP_PRUNE_PUBLIC` 无须再设置。上传返回非零退出码时，流水线必须立即失败并阻止部署。以下 PowerShell 示例在构建与上传后都检查退出码，部署命令只能放在成功检查之后：
 

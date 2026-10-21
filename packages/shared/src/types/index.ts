@@ -177,6 +177,8 @@ export type TTFBReportData = PerformanceReportData
 export type VueReportData = ErrorReportData
 
 export interface InitOptions {
+  /** Error-triggered rrweb recording; disabled unless enabled is true. */
+  replay?: import('../replay').ReplayOptions
   url: string
   appId: string | number
   /** appId 的兼容别名；输出时始终使用 app_id。 */

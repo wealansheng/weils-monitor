@@ -79,5 +79,25 @@ window.addEventListener('weils-monitor:report', (event) => {
 | `maxBatchBytes` | 批量包目标上限，默认 50 KB |
 | `resourceDurationThreshold` | 资源耗时下限，默认 100 ms；设为 `0` 可采集全部资源 |
 | `debug` | 开启规范化事件的控制台输出 |
+| `replay` | 可选错误录制配置，默认关闭；与普通事件使用独立队列和上传地址 |
 
 严重错误会触发立即冲刷；其余事件达到批量阈值或页面隐藏、退出时发送。同一页面使用一个监控实例即可，因为配置与上报队列由底层包共享。更多字段见 [`@weils-monitor/shared`](../shared/README.md)，完整演示见 [`example/vue`](../../example/vue)。
+## 错误录制与上传
+
+```ts
+const monitor = createMonitor({
+  url: '/api/v1/monitor',
+  appId: 'my-vue-app',
+  replay: {
+    enabled: true,
+    url: '/api/v1/records',
+    onStatus: status => console.info('[replay]', status),
+  },
+})
+```
+
+开启后异步录制，`await monitor.replay.start()` 可等待就绪；普通错误采集仍需 `monitor.observer()` 或按需启动错误采集器。JS、Promise 和 Vue 组件错误自动关联真实 `event_id`，无需再次调用 `capture()`。默认保存错误前 30 秒、后 10 秒，输入值遮罩，未触发错误时不上传。
+
+`monitor.replay` 提供 `start()`、`stop()`、`capture()`、`flush()`、`destroy()`、`subscribe()`。`flush()` 不截断当前错误窗口，`stop()` 提前封存已触发片段；状态中的 `uploaded` 表示后端回执已校验成功。配置关闭时 `start()` 不会重新启用录制。
+
+本仓库 [Vue 示例](../../example/vue/README.md) 默认开启，窗口为前 10 秒、后 5 秒，仅录制与上传。完整配置见 [replay 子包](../replay/README.md)，三项目联调见 [Replay 接入与排障](../../docs/replay.md)。

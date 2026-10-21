@@ -4,4 +4,6 @@ export default defineNuxtPlugin(() => {
   // 对公开 `NuxtApp` 接口的 `$monitor` 增强在它上面不可见；Nuxt 4 已改为公开的 `NuxtApp`。
   // useNuxtApp() 在两个大版本下都返回公开 `NuxtApp`，因此类型始终准确。
   useNuxtApp().$monitor?.addClickHandler('plugin-action')
+  // 状态回调放在客户端插件中，保持 nuxt.config.ts 的录制配置可序列化。
+  useNuxtApp().$monitor?.replay.subscribe(status => console.info('[replay]', status))
 })

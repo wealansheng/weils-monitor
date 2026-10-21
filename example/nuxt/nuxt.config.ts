@@ -22,6 +22,15 @@ export default defineNuxtConfig({
     ssr: true,
     frameworkErrors: true,
     debug: false,
+    replay: {
+      // 示例默认开启；设置 MONITOR_REPLAY=false 可关闭录制。
+      enabled: process.env.MONITOR_REPLAY !== 'false',
+      url: '/api/records',
+      sampleRate: 1,
+      beforeErrorMs: 10_000,
+      afterErrorMs: 5_000,
+      blockSelector: '.reports',
+    },
   },
   css: ['~/assets/main.css'],
   app: {

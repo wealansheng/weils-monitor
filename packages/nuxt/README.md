@@ -70,3 +70,31 @@ export default defineNuxtConfig({
 SSR 耗时依赖浏览器读取 Navigation Timing 的 `serverTiming`；不支持时跳过该指标。完整 Nuxt 4 演示见 [`example/nuxt`](../../example/nuxt)。
 
 生产 Nuxt 会从客户端 payload 中移除服务端错误堆栈。要用私有 Source Map 定位 SSR 错误，在运行 Nitro 的环境中设置 `MONITOR_SSR_ENDPOINT`（绝对 HTTP 上报地址）、`MONITOR_SSR_APP_ID`（与 `nuxtMonitor.appId` 相同）和 `MONITOR_RELEASE`（与 `nuxtMonitor.release` 相同）。Nitro 错误钩子会直接上报带原始堆栈的 `nuxt_ssr_error`；客户端仍会补报不含堆栈的简要错误。完整流程见 [Source Map 定位指南](../../docs/source-map.md)。
+## 客户端错误录制与上传
+
+在 `nuxtMonitor` 中添加以下配置即可开启客户端懒加载录制；通用 SDK 默认关闭，服务端不运行 rrweb：
+
+```ts
+replay: {
+  enabled: true,
+  url: '/api/v1/records',
+  sampleRate: 1,
+  beforeErrorMs: 30_000,
+  afterErrorMs: 10_000,
+}
+```
+
+Nuxt 配置仅使用可序列化字段。状态订阅使用已有客户端实例，不需要再创建录制器：
+
+```ts
+// app/plugins/replay-status.client.ts（Nuxt 4）
+export default defineNuxtPlugin(() => {
+  useNuxtApp().$monitor?.replay.subscribe(status => console.info('[replay]', status))
+})
+```
+
+客户端 `$monitor.replay` 提供 `start/stop/capture/flush/destroy/subscribe`。订阅不补发此前的状态。脱敏函数等不可序列化配置可使用独立 `createRecorder` API；此时关闭模块的自动录制，避免重复录制，并自行关联错误。
+
+JS、Promise、Vue、`nuxt_error` 与 `nuxt_chunk_error` 自动触发；`nuxt_ssr_error`、资源错误和白屏不触发。Nuxt 示例通过 `/api/records` 转发到后端 `/api/v1/records`，该转发是示例实现，安装模块不会自动创建接收接口。
+
+本仓库 [Nuxt 示例](../../example/nuxt/README.md) 默认开启，窗口为前 10 秒、后 5 秒，仅录制与上传。完整配置见 [replay 子包](../replay/README.md)，三项目联调见 [Replay 接入与排障](../../docs/replay.md)。

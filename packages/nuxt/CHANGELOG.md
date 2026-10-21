@@ -1,5 +1,21 @@
 # @weils-monitor/nuxt
 
+## 2.1.0
+
+### Minor Changes
+
+- 添加错误录制回放
+- Add opt-in lazy-loaded error replay with rrweb, masked input capture, compressed IndexedDB checkpoints, resumable chunk uploads and a separate sandboxed player entry.
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @weils-monitor/shared@1.3.0
+  - @weils-monitor/utils@1.2.0
+  - @weils-monitor/core@1.3.0
+  - @weils-monitor/vue@1.2.0
+
 ## 2.0.0
 
 ### Major Changes

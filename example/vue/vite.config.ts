@@ -7,7 +7,7 @@ export default defineConfig({
   build: { sourcemap: 'hidden' },
   preview: {
     proxy: {
-      '/api': { target: 'https://xxx.xxxxxxx.xxx:8888', changeOrigin: true },
+      '/api': { target: 'http://localhost:8888', changeOrigin: true },
     },
   },
   server: {
@@ -15,7 +15,7 @@ export default defineConfig({
     // allowedHosts: ['xxx.xxxxxxx.xxx'],
     proxy: {
       '/api': {
-        target: 'https://xxx.xxxxxxx.xxx:8888',
+        target: 'http://localhost:8888',
         changeOrigin: true,
       },
     },
