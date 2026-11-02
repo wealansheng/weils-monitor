@@ -18,6 +18,7 @@
     "smoke:timing": "node packages/vue/scripts/smoke-timing.mjs",
     "smoke:resource": "node packages/vue/scripts/smoke-resource.mjs",
     "smoke:nuxt": "node packages/nuxt/scripts/smoke-nuxt.mjs",
+    "smoke:uniapp": "node packages/uniapp/scripts/smoke-uniapp.mjs",
     "clean": "node scripts/clean.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",

@@ -3,6 +3,24 @@ import type { BaseReportData, ClientInfo, DeviceInfo } from '@weils-monitor/shar
 
 const SENSITIVE_QUERY_KEY = /pass(word)?|token|secret|auth|cookie|session|code|otp|phone|email/i
 
+/**
+ * 移除敏感查询参数，保留参数顺序与编码。
+ * 不依赖 URL / URLSearchParams，供没有这些全局对象的小程序运行时使用。
+ */
+export const sanitizeQueryString = (query: string): string => {
+  if (!query) return ''
+  return query
+    .split('&')
+    .filter((pair) => {
+      if (!pair) return false
+      const rawKey = pair.split('=')[0] ?? ''
+      let key = rawKey
+      try { key = decodeURIComponent(rawKey) } catch { /* keep the raw key */ }
+      return !SENSITIVE_QUERY_KEY.test(key)
+    })
+    .join('&')
+}
+
 export const sanitizeUrl = (value: string): string => {
   if (!value) return ''
 

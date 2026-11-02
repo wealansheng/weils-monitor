@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict'
+import { readdirSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import {
   createCollectorRegistry,
   createReporter,
@@ -7,6 +10,7 @@ import {
   parseErrorStack,
   enrichErrorStack,
   normalizeReportData,
+  sanitizeQueryString,
 } from '../dist/index.mjs'
 import { setConfig } from '@weils-monitor/utils'
 
@@ -83,3 +87,35 @@ assert.equal(enrichErrorStack({ event_type: 'error', error_type: 'promise_error'
 const cjs = await import('node:module').then(({ createRequire }) => createRequire(import.meta.url)('../dist/index.cjs'))
 assert.equal(cjs.parseErrorStack('Error: x\n    at https://example.com/a.js:1:2')[0].colno, 2)
 console.log('✅ 完整堆栈、浏览器格式、统一错误通道、降级与 ESM/CJS 验证通过')
+
+// 无 URL/URLSearchParams 的纯字符串脱敏，供小程序使用。
+assert.equal(sanitizeQueryString('token=abc&page=2&password=x&q=hello'), 'page=2&q=hello')
+assert.equal(sanitizeQueryString(''), '')
+assert.equal(sanitizeQueryString('a=1&&b=2'), 'a=1&b=2')
+
+// 无 replay / DOM 依赖的 reporter 子入口同时提供 ESM 与 CJS。
+const reporterEsm = await import('../dist/reporter.mjs')
+assert.equal(typeof reporterEsm.createReporter, 'function')
+assert.equal(reporterEsm.REPORT_EVENT, 'weils-monitor:report')
+assert.equal(typeof reporterEsm.sanitizeQueryString, 'function')
+const reporterCjs = await import('node:module').then(({ createRequire }) => createRequire(import.meta.url)('../dist/reporter.cjs'))
+assert.equal(typeof reporterCjs.createReporter, 'function')
+assert.equal(reporterCjs.REPORT_EVENT, 'weils-monitor:report')
+
+// error-stack-parser / stackframe 必须内联到 core 产物：
+// 小程序等非 Rollup 运行时无法解析残留的 require('stackframe')。
+const distDir = fileURLToPath(new URL('../dist/', import.meta.url))
+const bundleCode = readdirSync(distDir)
+  .filter((name) => name.endsWith('.mjs'))
+  .map((name) => readFileSync(join(distDir, name), 'utf8'))
+  .join('\n')
+assert.ok(!/require\(["']stackframe["']\)/.test(bundleCode), 'core ESM 产物不能残留 require("stackframe")')
+assert.ok(!/require\(["']error-stack-parser["']\)/.test(bundleCode), 'core ESM 产物不能残留 error-stack-parser require')
+assert.ok(!/from\s+["']stackframe["']/.test(bundleCode), 'core ESM 产物不能外部导入 stackframe')
+
+const cjsCode = readdirSync(distDir)
+  .filter((name) => name.endsWith('.cjs'))
+  .map((name) => readFileSync(join(distDir, name), 'utf8'))
+  .join('\n')
+assert.ok(!/require\(["']stackframe["']\)/.test(cjsCode), 'core CJS 产物不能外部 require stackframe')
+console.log('✅ 纯字符串脱敏、reporter 子入口（ESM/CJS）与 stackframe 内联验证通过')

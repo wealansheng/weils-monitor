@@ -11,10 +11,21 @@ import type { QueueReportData } from '@weils-monitor/shared'
 
 export type ReportTransport = 'auto' | 'image' | 'ajax' | 'beacon'
 
+/** 批量事件发送函数；非浏览器宿主（如小程序）可注入自己的传输实现。 */
+export type ReportBatchSender = (batch: QueueReportData[]) => boolean | Promise<boolean>
+
+/** 与 core 的 ReportStrategy 结构一致，避免 utils 反向依赖 core。 */
+export interface ReportStrategyLike {
+  enqueue(data: QueueReportData, immediate: boolean): void
+  flush(): void
+}
+
 export interface FlushReportOptions {
   transport?: ReportTransport
   /** 是否连未达到条数/体积阈值的数据也立即发送。 */
   includePartial?: boolean
+  /** 自定义批量发送实现；提供时忽略 transport。 */
+  sender?: ReportBatchSender
 }
 
 export interface ReportEnvelope {
@@ -64,7 +75,31 @@ const safeStringify = (data: unknown): string => {
   })
 }
 
-const byteLength = (value: string): number => new TextEncoder().encode(value).byteLength
+/** 无 TextEncoder 运行时（部分小程序 JS 引擎）的 UTF-8 字节数回退。 */
+const utf8ByteLength = (value: string): number => {
+  let bytes = 0
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index)
+    if (code < 0x80) bytes += 1
+    else if (code < 0x800) bytes += 2
+    else if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1)
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        bytes += 4
+        index += 1
+      } else bytes += 3
+    } else bytes += 3
+  }
+  return bytes
+}
+
+let textEncoder: TextEncoder | undefined
+
+const byteLength = (value: string): number => {
+  if (typeof TextEncoder === 'undefined') return utf8ByteLength(value)
+  textEncoder ??= new TextEncoder()
+  return textEncoder.encode(value).byteLength
+}
 
 export const createReportEnvelope = (data: unknown | unknown[]): ReportEnvelope => ({
   app_id: String(config.appId || config.appKey || ''),
@@ -191,12 +226,13 @@ const hasReachedThreshold = (): boolean =>
 const drainQueue = async (
   includePartial: boolean,
   transport: ReportTransport,
+  sender?: ReportBatchSender,
 ): Promise<boolean> => {
   while (getCacheSize() > 0 && (includePartial || hasReachedThreshold())) {
     const batch = takeCache(getNextBatchCount())
     if (!batch.length) break
 
-    const sent = await sendReport(batch, transport)
+    const sent = sender ? await sender(batch) : await sendReport(batch, transport)
     if (!sent) {
       prependCache(batch)
       return false
@@ -221,13 +257,14 @@ const drainQueueByBeacon = (includePartial: boolean): boolean => {
 export const flushReportQueue = (
   options: FlushReportOptions = {},
 ): Promise<boolean> => {
-  const { transport = 'auto', includePartial = true } = options
-  if (transport === 'beacon') {
+  const { transport = 'auto', includePartial = true, sender } = options
+  // beacon 是同步退出通道；使用自定义 sender 时必须走异步 drain。
+  if (transport === 'beacon' && !sender) {
     return Promise.resolve(drainQueueByBeacon(includePartial))
   }
   if (flushingPromise) return flushingPromise
 
-  flushingPromise = drainQueue(includePartial, transport).finally(() => {
+  flushingPromise = drainQueue(includePartial, transport, sender).finally(() => {
     flushingPromise = null
   })
   return flushingPromise
@@ -237,16 +274,23 @@ export const flushReportQueue = (
 export const lazyReportBatch = async (
   data: QueueReportData,
   immediate = false,
+  sender?: ReportBatchSender,
 ): Promise<boolean> => {
   addCache(data)
 
   if (immediate) {
-    await flushReportQueue({ includePartial: true })
-    return getCacheSize() === 0 ? true : flushReportQueue({ includePartial: true })
+    await flushReportQueue({ includePartial: true, sender })
+    return getCacheSize() === 0 ? true : flushReportQueue({ includePartial: true, sender })
   }
   if (!hasReachedThreshold()) return true
-  return flushReportQueue({ includePartial: true })
+  return flushReportQueue({ includePartial: true, sender })
 }
+
+/** 用自定义传输实现组装策略对象，供 createReporter 直接使用。 */
+export const createReportStrategy = (sender: ReportBatchSender): ReportStrategyLike => ({
+  enqueue(data, immediate) { void lazyReportBatch(data, immediate, sender) },
+  flush() { void flushReportQueue({ includePartial: true, sender }) },
+})
 
 export const sendByImg = sendByImage
 export const sendAjax = sendByAjax

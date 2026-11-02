@@ -7,7 +7,7 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@weils-monitor/example-vue"],
+  "ignore": ["@weils-monitor/example-vue", "@weils-monitor/example-uniapp"],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
     "onlyUpdatePeerDependentsWhenOutOfRange": true
   }

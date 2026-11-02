@@ -1,0 +1,37 @@
+{
+  "name": "@weils-monitor/uniapp",
+  "version": "1.0.1",
+  "description": "uni-app / 微信小程序（mp-weixin）监控适配",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@weils-monitor/core": "workspace:*",
+    "@weils-monitor/shared": "workspace:*",
+    "@weils-monitor/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}

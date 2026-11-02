@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./reporter": {
+      "types": "./dist/reporter.d.ts",
+      "import": "./dist/reporter.mjs",
+      "require": "./dist/reporter.cjs"
     }
   },
   "files": [

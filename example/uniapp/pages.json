@@ -1,0 +1,21 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "监控演示"
+      }
+    },
+    {
+      "path": "pages/detail/detail",
+      "style": {
+        "navigationBarTitleText": "详情页"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6f8"
+  }
+}

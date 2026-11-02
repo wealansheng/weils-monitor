@@ -61,6 +61,20 @@ reporter.report({ event_type: 'behavior', action: 'custom_action' })
 
 传入自定义装饰器数组会替换默认数组，因此需要显式保留规范化与发布装饰器。`createReporter()` 不传参数时使用浏览器适配器、批量上报策略和这两个默认装饰器。业务使用 Vue/Nuxt 时，优先使用对应框架包的入口。
 
+## 无浏览器运行时的子入口
+
+`@weils-monitor/core/reporter` 只包含上报原语（`createReporter`、适配器/策略类型、规范化/发布装饰器、`createCollectorRegistry`、`normalizeReportData`、`sanitizeQueryString` 等），不会加载 Replay 与 rrweb，也不访问 DOM 全局对象。小程序等非浏览器宿主可基于它接入自己的上下文适配器和批量传输：
+
+```ts
+import { createReporter, createCollectorRegistry } from '@weils-monitor/core/reporter'
+import { createReportStrategy } from '@weils-monitor/utils'
+
+const strategy = createReportStrategy((batch) => sendByMyRuntime(batch))
+const reporter = createReporter(myAdapter, strategy)
+```
+
+`@weils-monitor/uniapp` 即使用该入口实现 mp-weixin 适配。
+
 ## Replay 生命周期
 
 `createMonitorCore({ url, appId, replay: { enabled: true, url: '/api/v1/records' } })` 返回的 `replay` 与 Vue/Nuxt 使用同一控制器。默认关闭；开启时创建同步错误订阅，再异步导入录制包，因此懒加载期间的受支持错误也会排队处理。直接使用 core 时仍需启动错误采集器或通过 `monitor.report()` 上报错误。

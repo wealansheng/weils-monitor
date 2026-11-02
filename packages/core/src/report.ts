@@ -1,1 +1,1 @@
-export { report, normalizeReportData, setupExitFlush, REPORT_EVENT } from './runtime'
+export { report, normalizeReportData, setupExitFlush, REPORT_EVENT } from './reporter'

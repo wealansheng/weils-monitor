@@ -6,6 +6,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .tsup/
+unpackage
 
 # 日志
 *.log

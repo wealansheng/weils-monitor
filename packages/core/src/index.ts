@@ -1,10 +1,9 @@
-export * from './report'
+export * from './reporter'
 export * from './context'
-export {
-  browserAdapter, batchStrategy, createReporter, createMonitorCore,
-  createCollectorRegistry, withNormalization, withPublication,
-} from './runtime'
-export type { ReportAdapter, ReportStrategy, ReportHandler, ReportDecorator } from './runtime'
+export { createMonitorCore } from './runtime'
+export type {
+  ReportAdapter, ReportStrategy, ReportHandler, ReportDecorator,
+} from './reporter'
 export * from './performance'
 export * from './behavior'
 export * from './error'

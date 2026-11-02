@@ -40,6 +40,12 @@ importers:
         specifier: ^3.3.13
         version: 3.3.13(typescript@5.9.3)
 
+  example/uniapp:
+    dependencies:
+      '@weils-monitor/uniapp':
+        specifier: workspace:*
+        version: link:../../packages/uniapp
+
   example/vue:
     dependencies:
       '@fontsource/zcool-xiaowei':
@@ -147,6 +153,25 @@ importers:
         version: 3.2.7(@types/node@22.20.5)(jiti@2.7.0)(lightningcss@1.33.0)(terser@5.51.2)
 
   packages/shared:
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.30)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
+  packages/uniapp:
+    dependencies:
+      '@weils-monitor/core':
+        specifier: workspace:*
+        version: link:../core
+      '@weils-monitor/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@weils-monitor/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       tsup:
         specifier: ^8.0.0
