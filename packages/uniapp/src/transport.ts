@@ -41,13 +41,19 @@ export const createUniappSender = (runtime: ResolvedRuntime): ReportBatchSender 
         timeout: REQUEST_TIMEOUT,
         success: (res) => {
           const status = Number(res?.statusCode)
-          finish(status >= 200 && status < 300)
+          const ok = status >= 200 && status < 300
+          if (config.debug) console.log('[weils-monitor] report', status, batch.length)
+          finish(ok)
         },
-        fail: () => finish(false),
+        fail: (err) => {
+          if (config.debug) console.warn('[weils-monitor] report failed', config.url, err)
+          finish(false)
+        },
         // success/fail 至少会调用一个；complete 只作为异常实现的兜底。
         complete: () => finish(false),
       })
-    } catch {
+    } catch (error) {
+      if (config.debug) console.warn('[weils-monitor] report threw', config.url, error)
       finish(false)
     }
   })

@@ -10,7 +10,9 @@
 | `example/vue` | 开启，`VITE_MONITOR_REPLAY=false` 关闭 | 10 秒 / 5 秒 | Vite `/api/v1/records` → 后端同路径 |
 | `example/nuxt` | 开启，`MONITOR_REPLAY=false` 关闭 | 10 秒 / 5 秒 | Nuxt `/api/records` → 后端 `/api/v1/records` |
 
-两个示例均转发到 `http://localhost:8888`，修改环境变量后需重启服务。普通监控使用 `/api/v1/monitor`；录制使用 `/api/v1/records`，不放进 `events` 批量信封。
+Vue/Nuxt 两个 Web 示例均转发到 `http://localhost:8888`，修改环境变量后需重启服务。普通监控使用 `/api/v1/monitor`；录制使用 `/api/v1/records`，不放进 `events` 批量信封。
+
+`@weils-monitor/uniapp` 不支持 Replay：小程序没有 DOM，开启 `replay.enabled` 只会输出一次告警，`monitor.replay` 保留为 no-op 接口以兼容共享配置代码。需要回放时请在 H5/Web 端使用 Vue/Nuxt 包。
 
 仅 `js_error`、`promise_error`、`framework_error`、`nuxt_error`、`nuxt_chunk_error` 触发片段。普通点击、资源错误、HTTP 错误、白屏及 `nuxt_ssr_error` 不触发。未触发错误时只维护滚动缓存，不上传；重叠错误会合并，持续触发会推迟封存，最长受 `maxDurationMs` 限制。
 

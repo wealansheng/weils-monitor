@@ -66,6 +66,8 @@ export interface WxRuntime extends UniRuntime {
   getPerformance?: () => WxPerformance | undefined
   getLaunchOptionsSync?: () => { path?: string; query?: Record<string, unknown> } | undefined
   getDeviceInfo?: () => Record<string, unknown>
+  getAppBaseInfo?: () => Record<string, unknown>
+  getWindowInfo?: () => Record<string, unknown>
 }
 
 export interface PageInstance {

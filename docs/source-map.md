@@ -4,6 +4,8 @@ SDK 上报原始 `stack`、脚本位置和 `release`；同级项目 `monitor-bac
 
 Source Map 还原与 Replay 录制是两条独立链路，可在工作台的同一错误事件详情中查看：前者通过 `app_id + release` 匹配构建产物，后者通过 `app_id + event_id` 关联错误操作。录制上传和播放不要求先上传 map；联调见 [Replay 接入与排障](replay.md)。
 
+> 小程序端（`@weils-monitor/uniapp`）会保留 `stack_frames` 与原始 `stack`，但当前的 Source Map 上传/还原流程面向 Web 构建产物，尚未包含小程序构建产物适配。
+
 ## 采集与展示协议
 
 core 使用 `error-stack-parser` 将原始堆栈转换为按调用顺序排列的 `stack_frames`。每帧可包含 `filename`、`lineno`、`colno`、`function_name`、`raw`；JS、Promise、Vue、Nuxt 客户端错误共用归一化流程，Nitro 直接上报复用同一工具。已有有效的顶层文件、行列号优先，否则使用首个完整定位帧补齐。没有堆栈或解析失败时仍正常上报。

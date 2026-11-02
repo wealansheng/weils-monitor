@@ -6,8 +6,9 @@
     <button class="action" @click="onTrack">手动行为埋点</button>
     <button class="action" @click="onNavigate">navigateTo 跳转详情页</button>
     <button class="action" @click="onRequest">发起 uni.request</button>
-    <button class="action" @click="onError">触发 JS 错误</button>
-    <button class="action" @click="onReject">触发 Promise 错误</button>
+    <button class="action" @click="onVueError">触发 Vue 事件错误（framework_error）</button>
+    <button class="action" @click="onGlobalError">触发全局 JS 错误（js_error）</button>
+    <button class="action" @click="onReject">触发 Promise 错误（promise_error）</button>
   </view>
 </template>
 
@@ -30,8 +31,17 @@ const onRequest = () => {
   })
 }
 
-const onError = () => {
-  throw new Error('example js error')
+// Vue 事件处理器里的异常会被 Vue 的全局 errorHandler 捕获，
+// 由 @weils-monitor/uniapp 上报为 framework_error。
+const onVueError = () => {
+  throw new Error('example vue error')
+}
+
+// 脱离 Vue 错误处理链的异常由 wx.onError 捕获，上报为 js_error。
+const onGlobalError = () => {
+  setTimeout(() => {
+    throw new Error('example global js error')
+  }, 0)
 }
 
 const onReject = () => {

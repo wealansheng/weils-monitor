@@ -1,5 +1,19 @@
 # @weils-monitor/nuxt
 
+## 2.1.1
+
+### Patch Changes
+
+- 添加 uniapp 适配
+- Updated dependencies [fbad1a9]
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [fbad1a9]
+  - @weils-monitor/core@1.3.1
+  - @weils-monitor/shared@1.4.0
+  - @weils-monitor/utils@1.2.1
+  - @weils-monitor/vue@1.2.1
+
 ## 2.1.0
 
 ### Minor Changes

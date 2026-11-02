@@ -1,5 +1,15 @@
 # @weils-monitor/shared
 
+## 1.4.0
+
+### Minor Changes
+
+- 添加 uniapp 适配
+
+### Patch Changes
+
+- 将共享 `config` 与上报队列提升为 `globalThis` 单例，避免 pnpm workspace / uni-app（HBuilderX）等构建器把 shared 重复打包成多份实例时，`setConfig` 写入一份、发送逻辑读取另一份（表现为仍请求默认的 `127.0.0.1:8080`）。
+
 ## 1.3.0
 
 ### Minor Changes

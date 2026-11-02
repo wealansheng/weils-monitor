@@ -4,6 +4,8 @@
 
 录制由业务 SDK 完成，[monitor-backend](../../../monitor-backend/docs/replay.md) 接收分片并写入 `event_record`，[monitor-frontend](../../../monitor-frontend/docs/replay.md) 使用独立播放器查看片段。端到端启动与“没有上传”的排查见 [Replay 接入与排障](../../docs/replay.md)。
 
+> 小程序端（`@weils-monitor/uniapp`）没有 DOM，不支持录制；开启 `replay.enabled` 只会输出一次告警。需要回放请使用 Vue/Nuxt 的 H5/Web 端。
+
 ## Vue / Nuxt 接入
 
 ```ts

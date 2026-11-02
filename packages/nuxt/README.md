@@ -69,7 +69,10 @@ export default defineNuxtConfig({
 
 SSR 耗时依赖浏览器读取 Navigation Timing 的 `serverTiming`；不支持时跳过该指标。完整 Nuxt 4 演示见 [`example/nuxt`](../../example/nuxt)。
 
+`nuxtMonitor` 的类型是 `ModuleOptions extends InitOptions`，除三个 Nuxt 开关外，还支持 `release`、`projectName`、`userId`、`sampleRate`、`batchSize`、`maxBatchBytes`、`replay` 等通用字段。
+
 生产 Nuxt 会从客户端 payload 中移除服务端错误堆栈。要用私有 Source Map 定位 SSR 错误，在运行 Nitro 的环境中设置 `MONITOR_SSR_ENDPOINT`（绝对 HTTP 上报地址）、`MONITOR_SSR_APP_ID`（与 `nuxtMonitor.appId` 相同）和 `MONITOR_RELEASE`（与 `nuxtMonitor.release` 相同）。Nitro 错误钩子会直接上报带原始堆栈的 `nuxt_ssr_error`；客户端仍会补报不含堆栈的简要错误。完整流程见 [Source Map 定位指南](../../docs/source-map.md)。
+
 ## 客户端错误录制与上传
 
 在 `nuxtMonitor` 中添加以下配置即可开启客户端懒加载录制；通用 SDK 默认关闭，服务端不运行 rrweb：
@@ -98,3 +101,15 @@ export default defineNuxtPlugin(() => {
 JS、Promise、Vue、`nuxt_error` 与 `nuxt_chunk_error` 自动触发；`nuxt_ssr_error`、资源错误和白屏不触发。Nuxt 示例通过 `/api/records` 转发到后端 `/api/v1/records`，该转发是示例实现，安装模块不会自动创建接收接口。
 
 本仓库 [Nuxt 示例](../../example/nuxt/README.md) 默认开启，窗口为前 10 秒、后 5 秒，仅录制与上传。完整配置见 [replay 子包](../replay/README.md)，三项目联调见 [Replay 接入与排障](../../docs/replay.md)。
+
+## 类型检查与 IDE
+
+升级或重新构建 SDK 后，如果 IDE 报 `release` / `projectName` 不存在于 `nuxtMonitor`，通常是 `.nuxt` 类型缓存过期：
+
+```powershell
+Remove-Item -Recurse -Force .\example\nuxt\.nuxt
+pnpm build
+pnpm --filter @weils-monitor/example-nuxt typecheck
+```
+
+然后重启 IDE 的 TypeScript 服务（VS Code: `TypeScript: Restart TS Server`；WebStorm: `File → Invalidate Caches`）。CLI 能通过但 IDE 仍标红时，以 CLI 结果为准并清理缓存。更多说明见 [常见问题与排障](../../docs/troubleshooting.md#nuxt-types)。

@@ -1,5 +1,13 @@
 # @weils-monitor/example-nuxt
 
+## 0.0.4
+
+### Patch Changes
+
+- 添加 uniapp 适配
+- Updated dependencies
+  - @weils-monitor/nuxt@2.1.1
+
 ## 0.0.3
 
 ### Patch Changes

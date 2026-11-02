@@ -1,5 +1,11 @@
 # @weils-monitor/replay
 
+## 1.1.1
+
+### Patch Changes
+
+- 添加 uniapp 适配
+
 ## 1.1.0
 
 ### Minor Changes

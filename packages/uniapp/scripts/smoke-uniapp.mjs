@@ -500,6 +500,9 @@ const createApp = (previous) => {
   const code = readFileSync(distPath, 'utf8')
   assert.ok(!code.includes('@weils-monitor/replay'), 'uniapp 产物不能引用 replay 包')
   assert.ok(!code.toLowerCase().includes('rrweb'), 'uniapp 产物不能包含 rrweb')
+  // uni-app 的 Vite 注入插件依赖裸标识符 uni/wx；改成 globalThis.uni 会导致小程序拿不到运行时。
+  assert.ok(code.includes('typeof uni'), '产物必须保留裸 uni 标识符供 uni-app 注入')
+  assert.ok(code.includes('typeof wx'), '产物必须保留裸 wx 标识符供 uni-app 注入')
 
   const require = createRequire(import.meta.url)
   const cjs = require('../dist/index.cjs')

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { join } from 'node:path'
 import {
   createCollectorRegistry,
@@ -12,6 +13,7 @@ import {
   normalizeReportData,
   sanitizeQueryString,
 } from '../dist/index.mjs'
+import { config, getCacheSize } from '@weils-monitor/shared'
 import { setConfig } from '@weils-monitor/utils'
 
 setConfig({ appId: 'core-smoke', url: 'https://example.test/monitor', projectName: 'core' })
@@ -119,3 +121,22 @@ const cjsCode = readdirSync(distDir)
   .join('\n')
 assert.ok(!/require\(["']stackframe["']\)/.test(cjsCode), 'core CJS 产物不能外部 require stackframe')
 console.log('✅ 纯字符串脱敏、reporter 子入口（ESM/CJS）与 stackframe 内联验证通过')
+
+// 多份 shared 模块实例（pnpm/uni-app 构建器可能重复打包）必须共享 config/queue。
+const sharedSource = fileURLToPath(new URL('../../shared/dist/index.mjs', import.meta.url))
+const tempDir = mkdtempSync(join(tmpdir(), 'weils-shared-'))
+const duplicatePath = join(tempDir, 'shared-copy.mjs')
+try {
+  copyFileSync(sharedSource, duplicatePath)
+  const duplicate = await import(pathToFileURL(duplicatePath).href)
+  assert.equal(duplicate.config, config, '重复打包的 shared 必须复用同一 config 对象')
+  setConfig({ url: 'https://shared-state.test/monitor' })
+  assert.equal(duplicate.config.url, 'https://shared-state.test/monitor', 'setConfig 必须影响所有 shared 副本')
+  duplicate.addCache({ event_type: 'behavior', action: 'shared-state' })
+  assert.equal(getCacheSize(), 1, '重复打包的 shared 必须复用同一队列')
+  duplicate.clearCache()
+  assert.equal(getCacheSize(), 0)
+} finally {
+  rmSync(tempDir, { recursive: true, force: true })
+}
+console.log('✅ 多份 shared 实例的 config/queue 单例验证通过')

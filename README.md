@@ -136,6 +136,8 @@ export default {
 
 `url` 必须是绝对 HTTPS 地址并加入微信 request 合法域名。小程序端没有 DOM：不支持全局点击、空白屏、Core Web Vitals 和 Replay；页面点击使用 `monitor.behavior.trackClick()` / `wrapClick()`，路由漏采时用 `trackPageView()` 补报。完整说明见 [uni-app 使用示例](packages/uniapp/README.md) 和 [平台说明](docs/uniapp.md)。
 
+本地联调可使用 `http://127.0.0.1:8888/api/v1/monitor`，并把 `monitor-backend` 的 `HOST` 改为 `0.0.0.0`（避免只监听 IPv6）。`http://127.0.0.1:8080/api/v1/monitor` 只是 SDK 默认值；如果已经配置 8888 却仍请求 8080，按 [常见问题与排障](docs/troubleshooting.md) 清理旧构建并检查 shared 单例。
+
 ## 上报数据
 
 `url` 是接收监控数据的 HTTP 地址，`appId` 是应用标识，两者是接入时的必填配置。事件先进入页面内队列，默认累计 20 条或约 50 KB 时发送；严重错误会立即冲刷，页面隐藏或退出时也会尝试发送剩余事件。接收端收到的是一个批量事件包，例如：
@@ -154,6 +156,8 @@ export default {
 ```
 
 示例仅展示主要字段；实际事件还会包含 `event_id`、`timestamp`、页面和设备等公共字段。`sample_rate` 当前记录配置值，不执行随机采样。资源性能事件默认只上报耗时至少 100 ms 的资源，可用 `resourceDurationThreshold: 0` 关闭过滤。
+
+配置 `config` 与上报队列由 [`@weils-monitor/shared`](packages/shared/README.md) 持有，并通过 `globalThis` 单例跨模块副本共享。因此同一页面/小程序进程只应创建一个监控实例，重复打包 shared 也不会出现“配置写一份、发送读另一份”的问题。
 
 ## 错误录制与上传
 
@@ -191,11 +195,33 @@ Vue 与 Nuxt 示例的 `/api` 请求都会转发到 `http://localhost:8888`。�
 | [`example/nuxt`](example/nuxt) | Nuxt 4 交互演示，含 SSR 错误页与监控转发接口 |
 | [`example/uniapp`](example/uniapp) | uni-app / 微信小程序演示（HBuilderX + 微信开发者工具） |
 
+## 常见问题
+
+常见问题集中记录在 [常见问题与排障](docs/troubleshooting.md)，包括：
+
+- 配置了 8888 却请求 8080，或数据没有上报；
+- 本地后端只监听 IPv6（`::1`），小程序访问 `127.0.0.1` 失败；
+- `framework_error` / `js_error` / `promise_error` 的触发区别；
+- 没有 `request`、路由/页面事件；
+- 小程序端 Replay 与 Core Web Vitals 不可用；
+- Nuxt `.nuxt` 类型缓存导致 `release` 爆红。
+
+## 文档
+
+| 文档 | 内容 |
+| --- | --- |
+| [文档索引](docs/README.md) | 全部文档入口 |
+| [uni-app / 微信小程序](docs/uniapp.md) | mp-weixin 接入、事件映射、限制与验收清单 |
+| [常见问题与排障](docs/troubleshooting.md) | 8080/8888、未上报、IPv6、错误类型、Nuxt 类型缓存 |
+| [上报字段协议](docs/字段要求.md) | 批量信封、公共字段、六类事件与小程序指标 |
+| [Replay 接入与排障](docs/replay.md) | 录制协议、上传与三项目联调 |
+| [Source Map 定位](docs/source-map.md) | 私有 map 上传与错误堆栈还原 |
+
 ## 开发与发布
 
 生产错误的 Source Map 私有上传与查询流程见 [Source Map 定位指南](docs/source-map.md)。
 
-错误事件会携带 `error-stack-parser` 解析的完整 `stack_frames` 和原始 `stack`，顶层 `filename/lineno/colno` 表示构建文件位置。生产接入须配置应用 `release`，与上传 map 时的版本一致。后端使用 `@jridgewell/trace-mapping` 读取私有 `mapdata`，工作台错误详情支持按调用帧查看源码及上下文；浏览器不需要访问 map 文件。
+错误事件会携带 `error-stack-parser` 解析的完整 `stack_frames` 和原始 `stack`，顶层 `filename/lineno/colno` 表示构建文件位置。生产接入须配置应用 `release`，与上传 map 时的版本一致。后端使用 `@jridgewell/trace-mapping` 读取私有 `mapdata`，工作台错误详情支持按调用帧查看源码及上下文；浏览器不需要访问 map 文件。小程序端会保留堆栈与 `stack_frames`，但当前 Source Map 上传/还原流程面向 Web 构建，尚未包含小程序产物适配。
 
 ```bash
 pnpm build           # 构建所有 packages

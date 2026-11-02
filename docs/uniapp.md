@@ -2,11 +2,14 @@
 
 `@weils-monitor/uniapp` 面向 uni-app 的微信小程序（mp-weixin）运行时，复用仓库的事件协议、规范化、批量队列与退出冲刷；浏览器专属采集（DOM 点击、Core Web Vitals、空白屏、rrweb 回放）在小程序端不适用。
 
+接入与排障入口：[文档索引](README.md) · [常见问题与排障](troubleshooting.md)
+
 ## 运行前提
 
 - uni-app 项目（Vue 2.7 或 Vue 3 均可），页面通过 `uni.*` API 导航和请求。
 - 微信小程序基础库建议 ≥ 2.11.0（`wx.getPerformance` 从该版本提供；低版本自动退化为 `mp_launch`）。
 - 上报地址为绝对 HTTPS 地址，并加入微信公众平台的 request 合法域名；开发工具可临时关闭域名校验。
+- 本地联调使用 `http://127.0.0.1:8888/api/v1/monitor` 时，`monitor-backend` 的 `HOST` 应为 `0.0.0.0`，否则 Windows 上可能只监听 IPv6 `::1`，小程序访问 IPv4 会失败。
 
 ## 接入
 
@@ -25,6 +28,14 @@ Vue 3：`main.js` 中 `createSSRApp(App)` 后 `app.use(monitor)`；在 `App.vue`
 Vue 2：`Vue.use(monitor)`；同样在 `onLaunch` 调用 `monitor.observer()`。
 
 `app.use(monitor)` 只安装 Vue 错误处理器，不启动采集；`observer()` 才按开关启动各项采集器，同一实例重复调用不会重复监听。
+
+## 运行时与配置
+
+- **uni 注入**：小程序 app service 不暴露 `globalThis.uni`。SDK 产物保留裸 `uni` / `wx` 标识符，由 uni-app 的 Vite 注入插件替换为真实运行时；无需在业务代码里传 `runtime`。
+- **wx 兜底**：注入缺失时，SDK 会用 `wx` 组成最小运行时，保证错误、上下文和 `uni.request` 上报仍能工作；但 `uni.addInterceptor` 依赖真实 uni，路由/请求拦截不可用。
+- **共享配置**：`config` 与上报队列由 `@weils-monitor/shared` 的 `globalThis` 单例持有。即使 pnpm/uni-app 把 shared 打包成多份，`setConfig` 与发送逻辑也读取同一个对象。
+- **8080 默认值**：`http://127.0.0.1:8080/api/v1/monitor` 只是没有配置 `url` 时的默认值。已配置 8888 却请求 8080，通常是旧构建或旧 shared 副本，处理方式见 [常见问题与排障](troubleshooting.md#port-8080)。
+- **调试开关**：`debug: true` 会打印规范化事件和上报成功/失败结果。
 
 ## 数据流
 
@@ -78,7 +89,24 @@ import { REPORT_EVENT } from '@weils-monitor/uniapp'
 uni.$on(REPORT_EVENT, (event) => console.log('[monitor]', event))
 ```
 
-`createMonitor({ debug: true })` 会额外打印每条规范化事件。微信开发者工具 Network 中，批量包为 `POST {url}`，请求体是 `{ app_id, projectName, sdk_version, send_time, sample_rate, events }`；SDK 自身的上报请求不会出现在 `request` 事件里。
+`createMonitor({ debug: true })` 会额外打印：
+
+```text
+[weils-monitor] { event_type: 'behavior', action: 'page_view', ... }   // 规范化完成
+[weils-monitor] report 200 1                                           // 发送成功
+[weils-monitor] report failed <url> { errMsg: ... }                    // 发送失败
+```
+
+微信开发者工具 Network 中，批量包为 `POST {url}`，请求体是 `{ app_id, projectName, sdk_version, send_time, sample_rate, events }`；SDK 自身的上报请求不会出现在 `request` 事件里。
+
+判断顺序：
+
+1. 有 `[weils-monitor] { ... }`：采集和规范化正常，继续看发送；
+2. 有 `report ...`：发送链路正常，检查后端入库/ClickHouse；
+3. 只有事件、没有 `report`：检查地址、域名、接收端监听（IPv4/IPv6）；
+4. 连 `[weils-monitor]` 都没有：检查 `onLaunch` 是否调用 `observer()`、是否运行了旧构建。
+
+更多症状见 [常见问题与排障](troubleshooting.md)。
 
 ## 自动化冒烟
 
@@ -87,16 +115,19 @@ pnpm build
 pnpm smoke:uniapp
 ```
 
-冒烟脚本注入 fake `uni`/`wx`，覆盖：上下文与脱敏、JS/Promise/页面不存在/Vue 2 与 Vue 3 框架错误、路由成功/失败/去重、请求成功/失败/阈值/自端点跳过、性能指标与 `mp_launch` 回退、内存告警、`onAppHide` 批量信封、发送失败重排、缺失 `TextEncoder` 回退，以及产物不包含 `rrweb`/`@weils-monitor/replay`。
+冒烟脚本注入 fake `uni`/`wx`，覆盖：上下文与脱敏、JS/Promise/页面不存在/Vue 2 与 Vue 3 框架错误、路由成功/失败/去重、请求成功/失败/阈值/自端点跳过、性能指标与 `mp_launch` 回退、内存告警、`onAppHide` 批量信封、发送失败重排、缺失 `TextEncoder` 回退，以及产物保留裸 `uni`/`wx` 供 uni-app 注入、不包含 `rrweb`/`@weils-monitor/replay`。
+
+`pnpm smoke:core` 额外验证多份 shared 副本共享同一 `config`/队列，避免再次出现“配置 8888、请求 8080”。
 
 ## 微信开发者工具验收清单
 
-1. 配置绝对 HTTPS `url`，关闭“不校验合法域名”（或把域名加入白名单），运行 `example/uniapp`。
-2. 进入首页：Console/Network 出现初始 `page_view`，`page_url`/`route`/`referrer` 正确。
+1. 本地联调：`monitor-backend` 设置 `HOST=0.0.0.0` 并启动；示例 `url` 使用 `http://127.0.0.1:8888/api/v1/monitor`，`debug: true`；微信开发者工具勾选“不校验合法域名”。真机/生产改为绝对 HTTPS 地址并配置合法域名。
+2. 进入首页：Console/Network 出现初始 `page_view`，`page_url`/`route`/`referrer` 正确；`debug` 输出 `report 200`。
 3. 点击“navigateTo 跳转详情页”再返回：分别出现 `route_change` 与 `page_view`，`duration` 有值。
-4. 点击请求按钮：出现 `request` 事件；Network 中查看 SDK 批量 POST 不含该请求的自身采集。
-5. 触发 JS 错误与 Promise 错误：出现 `js_error`、`promise_error`，错误详情包含 `stack_frames`。
-6. 触发 Vue 组件错误：出现 `framework_error`，且应用原有 `errorHandler` 仍被调用。
+4. 点击请求按钮：出现 `request` 事件；按钮请求的是后端健康检查 `GET /`，不能使用监控上报端点。Network 中查看 SDK 批量 POST 不含该请求的自身采集。
+5. 点击“触发 Vue 事件错误”：出现 `framework_error`（Vue 事件处理器里的异常由 Vue 全局 `errorHandler` 捕获）；点击“触发全局 JS 错误”：出现 `js_error`（脱离 Vue 错误链，由 `wx.onError` 捕获）；点击“触发 Promise 错误”：出现 `promise_error`。错误详情包含 `stack_frames`。
+6. 触发 Vue 组件/渲染错误：同样出现 `framework_error`，且应用原有 `errorHandler` 仍被调用。
 7. 切后台再回前台：Network 出现一次批量 POST；请求体信封字段完整。
 8. 控制台出现一次 Replay 不支持提示，页面无异常。
 9. 使用 `<navigator>` 或系统返回后调用 `monitor.behavior.trackPageView()`，确认可手动补报页面访问。
+10. 验证 ClickHouse/工作台：`GET /api/v1/dashboard/overview?app_id=...` 或工作台能看到对应应用事件。

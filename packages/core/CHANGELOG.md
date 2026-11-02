@@ -1,5 +1,18 @@
 # @weils-monitor/core
 
+## 1.3.1
+
+### Patch Changes
+
+- fbad1a9: 新增 `@weils-monitor/core/reporter` 子入口：提供不加载 Replay/rrweb、不依赖 DOM 的上报原语；补充不依赖 `URL` 的 `sanitizeQueryString`，供小程序等非浏览器宿主复用。
+- 添加 uniapp 适配
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [fbad1a9]
+  - @weils-monitor/shared@1.4.0
+  - @weils-monitor/replay@1.1.1
+  - @weils-monitor/utils@1.2.1
+
 ## 1.3.0
 
 ### Minor Changes

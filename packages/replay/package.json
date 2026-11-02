@@ -1,6 +1,6 @@
 {
   "name": "@weils-monitor/replay",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Private error-triggered rrweb recording and replay",
   "type": "module",
   "main": "./dist/index.cjs",

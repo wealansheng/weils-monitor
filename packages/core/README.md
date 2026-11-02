@@ -73,7 +73,9 @@ const strategy = createReportStrategy((batch) => sendByMyRuntime(batch))
 const reporter = createReporter(myAdapter, strategy)
 ```
 
-`@weils-monitor/uniapp` 即使用该入口实现 mp-weixin 适配。
+`error-stack-parser` 及其 CJS 依赖 `stackframe` 已内联进 core 产物，非浏览器宿主不需要再解析 `require('stackframe')`；Vue/Nuxt/uni-app 包都受益于这一点。
+
+`@weils-monitor/uniapp` 即使用该入口实现 mp-weixin 适配。`config` 与队列由 `@weils-monitor/shared` 的 `globalThis` 单例共享，详见 [shared 文档](../shared/README.md)。
 
 ## Replay 生命周期
 

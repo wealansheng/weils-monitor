@@ -1,7 +1,9 @@
 import type { QueueReportData } from './types';
 import { deepCopy } from './deepCopy';
+import { sharedState } from './constants';
 
-const queue: QueueReportData[] = [];
+// 与 config 共用同一份全局状态，避免多份 shared 实例各持一个队列。
+const queue: QueueReportData[] = sharedState.queue;
 
 export function getCache(): QueueReportData[] {
   return deepCopy(queue);

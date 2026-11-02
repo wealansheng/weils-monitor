@@ -81,7 +81,7 @@ window.addEventListener('weils-monitor:report', (event) => {
 | `debug` | 开启规范化事件的控制台输出 |
 | `replay` | 可选错误录制配置，默认关闭；与普通事件使用独立队列和上传地址 |
 
-严重错误会触发立即冲刷；其余事件达到批量阈值或页面隐藏、退出时发送。同一页面使用一个监控实例即可，因为配置与上报队列由底层包共享。更多字段见 [`@weils-monitor/shared`](../shared/README.md)，完整演示见 [`example/vue`](../../example/vue)。
+严重错误会触发立即冲刷；其余事件达到批量阈值或页面隐藏、退出时发送。同一页面使用一个监控实例即可，因为配置与上报队列由底层包共享（并通过 `globalThis` 单例避免多份 shared 副本各持一份配置）。更多字段见 [`@weils-monitor/shared`](../shared/README.md)，完整演示见 [`example/vue`](../../example/vue)。遇到数据未上报、8080 默认地址或 localhost/IPv6 问题，见 [常见问题与排障](../../docs/troubleshooting.md)。
 ## 错误录制与上传
 
 ```ts

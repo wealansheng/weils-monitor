@@ -21,3 +21,15 @@ SDK 仅在客户端录制，保留错误前 10 秒、后 5 秒并自动上传；
 输入默认遮罩，实时报告区域通过 `blockSelector: '.reports'` 屏蔽。完整配置与上传协议见 [Replay 文档](../../packages/replay/README.md)。
 
 示例页面只录制与上传；播放在同级管理工作台中完成。Network 搜索 `records` 时看到的是浏览器到 Nuxt 的 `/api/records` 请求，Nuxt 服务端再向 8888 转发；不要把它误认为浏览器未请求 `/api/v1/records`。完整链路与排障见[三项目联调指南](../../docs/replay.md)。
+
+## 类型检查
+
+重新构建 `@weils-monitor/nuxt` 后，如果 IDE 报 `release` / `projectName` 等字段不属于 `nuxtMonitor`，通常是 `.nuxt` 类型缓存过期：
+
+```powershell
+Remove-Item -Recurse -Force .\example\nuxt\.nuxt
+pnpm build
+pnpm --filter @weils-monitor/example-nuxt typecheck
+```
+
+然后重启 IDE 的 TypeScript 服务。`nuxtMonitor` 是 `ModuleOptions extends InitOptions`，`release`、`projectName`、`replay` 都是合法字段。详见 [常见问题与排障](../../docs/troubleshooting.md)。

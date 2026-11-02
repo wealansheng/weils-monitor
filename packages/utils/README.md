@@ -31,6 +31,8 @@ await flushReportQueue({ includePartial: true })
 
 `lazyReportBatch` 是低层队列入口，不会自动补齐 `event_id`、时间戳和浏览器公共字段。需要这些字段时请使用 [`@weils-monitor/core`](../core/README.md) 的 `report` / `createMonitorCore`，或框架包的 `monitor.report()`。发送失败的批次会放回队首等待下一次冲刷。
 
+配置与队列来自 [`@weils-monitor/shared`](../shared/README.md)，并通过 `globalThis` 单例跨模块副本共享：即使 pnpm/uni-app 打包出多份 shared，`setConfig` 与 `lazyReportBatch` 也使用同一份 `config`/队列。
+
 ## 性能评分
 
 ```ts

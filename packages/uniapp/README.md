@@ -49,7 +49,9 @@ export default {
 
 Vue 2 项目使用 `Vue.use(monitor)` 安装，并在 `App.vue` 的 `onLaunch` 中调用 `monitor.observer()`。
 
-> `url` 必须是绝对 HTTPS 地址，并在微信公众平台加入 request 合法域名。本地联调可在微信开发者工具勾选“不校验合法域名”。
+> `url` 必须是绝对 HTTPS 地址，并在微信公众平台加入 request 合法域名。本地联调可在微信开发者工具勾选“不校验合法域名”，并使用明确的 IPv4 地址，例如 `http://127.0.0.1:8888/api/v1/monitor`。
+>
+> `http://127.0.0.1:8080/api/v1/monitor` 只是 shared 包的默认值；如果配置了 8888 却仍请求 8080，请参考 [常见问题与排障](../../docs/troubleshooting.md#port-8080) 清理旧构建。
 
 ## 配置
 
@@ -57,6 +59,7 @@ Vue 2 项目使用 `Vue.use(monitor)` 安装，并在 `App.vue` 的 `onLaunch` �
 | --- | --- | --- |
 | `url`、`appId` | 必填 | 上报地址与应用标识；小程序端 `url` 需为绝对地址 |
 | `projectName` | `weils-monitor` | 项目名，写入事件与批量包 |
+| `debug` | `false` | 打印每条规范化事件及上报成功/失败结果 |
 | `batchSize` | `20` | 批量条数阈值 |
 | `maxBatchBytes` | `50 * 1024` | 批量包体积上限 |
 | `runtimeErrors` | `true` | `wx.onError` / `onUnhandledRejection` / `onPageNotFound` |
@@ -70,6 +73,15 @@ Vue 2 项目使用 `Vue.use(monitor)` 安装，并在 `App.vue` 的 `onLaunch` �
 | `runtime` | 自动解析 | 测试/宿主注入 `uni`、`wx`、`getCurrentPages` |
 
 `replay` 保留配置位但小程序端不会录制：开启时只告警一次，接口保持在 `monitor.replay` 上以兼容共享配置代码。
+
+## 运行时与 uni 注入
+
+小程序 app service 不会把 `uni` 挂到 `globalThis`。本包产物保留裸 `uni` / `wx` 标识符，由 uni-app 的 Vite 注入插件替换为真实运行时（mp-weixin 编译为 `@dcloudio/uni-mp-weixin` 的 uni 对象）。因此：
+
+- 正常接入无需传 `runtime`，也不要把 SDK 改成依赖 `globalThis.uni`；
+- 注入不可用时，会用 `wx` 组成最小运行时，保证错误、上下文和 `uni.request` 上报仍能工作，但路由/请求拦截不可用；
+- `runtime` 仅用于测试或非标准宿主注入 `uni`、`wx`、`getCurrentPages`；
+- `config` 与队列由 [`@weils-monitor/shared`](../shared/README.md) 的 `globalThis` 单例共享，多份 shared 副本不会各持一个 8080 默认配置。
 
 ## 采集内容
 
@@ -86,6 +98,17 @@ Vue 2 项目使用 `Vue.use(monitor)` 安装，并在 `App.vue` 的 `onLaunch` �
 | `wx.onMemoryWarning` | `stability` / `memory_warning` |
 
 公共字段来自 `uni.getSystemInfoSync()`、当前页面栈和启动参数：`device`、`browser`（WeChat）、`os`、`network`、`locale`、`screen`、`viewport`、`page_url`、`route`、`referrer`。小程序没有域名，`page_url` 为应用内路径（如 `/pages/index/index?tab=1`），query 中的敏感参数会被移除。
+
+### 错误类型
+
+| 触发方式 | 上报类型 |
+| --- | --- |
+| `@click` / Vue 生命周期中 `throw` | `framework_error`（Vue 全局 `errorHandler`） |
+| `setTimeout(() => { throw ... })`、非 Vue 模块抛错 | `js_error`（`wx.onError`） |
+| 未处理的 `Promise.reject` | `promise_error`（`wx.onUnhandledRejection`） |
+| 打开不存在的页面 | `page_not_found`（`wx.onPageNotFound`） |
+
+Vue 事件处理器里的异常会走 Vue，因此是 `framework_error` 而不是 `js_error`。示例同时提供两种按钮用于区分。
 
 ## 按需启动与手动埋点
 
@@ -112,13 +135,23 @@ const onBuy = monitor.behavior.wrapClick('buy_clicked', () => submitOrder())
 monitor.behavior.trackPageView()
 ```
 
-每条规范化事件都会通过 `uni.$emit('weils-monitor:report', data)` 发布，便于本地调试：
+每条规范化事件都会通过 `uni.$emit('weils-monitor:report', data)` 发布，便于本地调试（uni 注入不可用的兜底模式下只保留 `debug` 日志）：
 
 ```ts
 import { REPORT_EVENT } from '@weils-monitor/uniapp'
 
 uni.$on(REPORT_EVENT, (event) => console.log('[monitor]', event))
 ```
+
+开启 `debug: true` 后还会看到：
+
+```text
+[weils-monitor] { event_type: 'behavior', action: 'page_view', ... }   // 规范化完成
+[weils-monitor] report 200 1                                           // 发送成功
+[weils-monitor] report failed <url> { errMsg: ... }                    // 发送失败
+```
+
+如果只有 `[weils-monitor] { ... }` 没有 `report`，问题通常在地址、域名或接收端；如果连 `[weils-monitor]` 都没有，先确认 `onLaunch` 里调用了 `monitor.observer()`。完整排障见 [常见问题与排障](../../docs/troubleshooting.md)。
 
 ## 上报机制
 
@@ -135,7 +168,7 @@ uni.$on(REPORT_EVENT, (event) => console.log('[monitor]', event))
 }
 ```
 
-发送失败的事件会放回队首等待下一次冲刷。SDK 自身的上报请求不会被 request 采集器再次采集。
+发送失败的事件会放回队首等待下一次冲刷。SDK 自身的上报请求不会被 request 采集器再次采集；如果要在示例中演示 `request` 事件，`demoRequestUrl` 不能和监控 `url` 相同（示例使用后端健康检查 `GET /`）。
 
 ## 已知限制
 
@@ -146,6 +179,7 @@ uni.$on(REPORT_EVENT, (event) => console.log('[monitor]', event))
 - 小程序没有 `TextEncoder` 时会用纯 JS 计算字节数；`crypto.randomUUID` 缺失时使用随机 UUID 回退。
 - H5、app-plus 仅保证基础能力；H5 建议继续使用 `@weils-monitor/vue`。
 - 建议同一小程序只创建一个 monitor 实例。
+- 遇到未上报、8080、IPv6 后端等问题时，优先查看 [常见问题与排障](../../docs/troubleshooting.md)。
 
 ## 示例与验证
 
