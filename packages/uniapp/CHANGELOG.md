@@ -1,5 +1,13 @@
 # @weils-monitor/uniapp
 
+## 1.1.1
+
+### Patch Changes
+
+- 性能回调,过滤 query,修改 pv 开关
+- Updated dependencies
+  - @weils-monitor/core@1.3.2
+
 ## 1.1.0
 
 ### Minor Changes

@@ -62,10 +62,16 @@ export const collectLaunch = (context: CollectorContext): void => {
 
   if (performance && typeof performance.createObserver === 'function') {
     try {
-      const observer = performance.createObserver((entries) => {
+      const observer = performance.createObserver((entryList) => {
+        let entries: unknown
+        try {
+          entries = Array.isArray(entryList) ? entryList : entryList?.getEntries?.()
+        } catch { return /* broken host entry list */ }
         if (!Array.isArray(entries)) return
-        for (const entry of entries) reportEntry(context, entry, seen)
-      }, { entryTypes: [...ENTRY_TYPES] })
+        for (const entry of entries) {
+          if (entry && typeof entry === 'object') reportEntry(context, entry, seen)
+        }
+      })
       observer?.observe?.({ entryTypes: [...ENTRY_TYPES] })
     } catch { /* old base library: fall back to mp_launch only */ }
   }

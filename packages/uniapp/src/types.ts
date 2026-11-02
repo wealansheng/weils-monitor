@@ -54,10 +54,13 @@ export interface WxPerformanceObserver {
   disconnect?: () => void
 }
 
+export interface WxPerformanceEntryList {
+  getEntries: () => WxPerformanceEntry[]
+}
+
 export interface WxPerformance {
   createObserver?: (
-    callback: (entries: WxPerformanceEntry[]) => void,
-    options?: { entryTypes?: string[] },
+    callback: (entries: WxPerformanceEntryList | WxPerformanceEntry[]) => void,
   ) => WxPerformanceObserver
 }
 
@@ -114,7 +117,7 @@ export interface UniappMonitorOptions extends InitOptions {
   performance?: boolean
   /** 上报路由切换，默认 true。 */
   routeChange?: boolean
-  /** 上报页面访问，默认 true。 */
+  /** 自动上报页面访问，默认 true；不影响显式调用 trackPageView。 */
   pageView?: boolean
   /** 采集 wx.onMemoryWarning，默认 true。 */
   memoryWarning?: boolean

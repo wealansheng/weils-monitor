@@ -68,7 +68,7 @@ Vue 2 项目使用 `Vue.use(monitor)` 安装，并在 `App.vue` 的 `onLaunch` �
 | `requestDurationThreshold` | `0` | request 事件耗时下限（毫秒） |
 | `performance` | `true` | `wx.getPerformance` 启动/渲染指标 + `mp_launch` |
 | `routeChange` | `true` | 路由切换 `route_change` |
-| `pageView` | `true` | 页面访问 `page_view`（初始 + 路由成功） |
+| `pageView` | `true` | 自动页面访问 `page_view`（初始 + 路由成功）；关闭后仍可显式调用 `trackPageView()` |
 | `memoryWarning` | `true` | `wx.onMemoryWarning` 内存告警 |
 | `runtime` | 自动解析 | 测试/宿主注入 `uni`、`wx`、`getCurrentPages` |
 
@@ -98,6 +98,8 @@ Vue 2 项目使用 `Vue.use(monitor)` 安装，并在 `App.vue` 的 `onLaunch` �
 | `wx.onMemoryWarning` | `stability` / `memory_warning` |
 
 公共字段来自 `uni.getSystemInfoSync()`、当前页面栈和启动参数：`device`、`browser`（WeChat）、`os`、`network`、`locale`、`screen`、`viewport`、`page_url`、`route`、`referrer`。小程序没有域名，`page_url` 为应用内路径（如 `/pages/index/index?tab=1`），query 中的敏感参数会被移除。
+
+每次上报都会根据实时页面栈校准页面归属，页面变化时更新 `referrer`，同页重复上报保持来源不变。页面栈暂时为空时保留最近页面，仅首次无页面信息时回退启动参数。普通事件（包括请求完成事件）按上报时所在页面归属；导航事件显式记录源页面和目标页面。未经过路由拦截器的跳转会在后续事件中校准归属，但 PV 仍需手动补报。`page_not_found` 的 `extra.query` 也会按相同敏感键规则过滤，且不修改原始参数对象。
 
 ### 错误类型
 

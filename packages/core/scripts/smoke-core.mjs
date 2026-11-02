@@ -100,9 +100,11 @@ const reporterEsm = await import('../dist/reporter.mjs')
 assert.equal(typeof reporterEsm.createReporter, 'function')
 assert.equal(reporterEsm.REPORT_EVENT, 'weils-monitor:report')
 assert.equal(typeof reporterEsm.sanitizeQueryString, 'function')
+assert.deepEqual(reporterEsm.sanitizeQueryObject({ tab: '1', TOKEN: 'secret', '%70hone': 'private' }), { tab: '1' })
 const reporterCjs = await import('node:module').then(({ createRequire }) => createRequire(import.meta.url)('../dist/reporter.cjs'))
 assert.equal(typeof reporterCjs.createReporter, 'function')
 assert.equal(reporterCjs.REPORT_EVENT, 'weils-monitor:report')
+assert.deepEqual(reporterCjs.sanitizeQueryObject({ page: 2, password: 'secret' }), { page: 2 })
 
 // error-stack-parser / stackframe 必须内联到 core 产物：
 // 小程序等非 Rollup 运行时无法解析残留的 require('stackframe')。

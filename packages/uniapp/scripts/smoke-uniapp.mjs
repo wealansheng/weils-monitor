@@ -10,6 +10,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { clearCache, config, getCacheSize } from '@weils-monitor/shared'
 import { REPORT_EVENT, createMonitor } from '../dist/index.mjs'
+import { sanitizeQueryObject, sanitizeQueryString } from '@weils-monitor/core/reporter'
 
 const distPath = fileURLToPath(new URL('../dist/index.mjs', import.meta.url))
 if (!existsSync(distPath)) {
@@ -99,8 +100,8 @@ const createHarness = ({ pages, clock = 1000, requestStatus = 'success' } = {}) 
 
   const wx = {
     getPerformance: () => ({
-      createObserver: (callback, options) => {
-        state.perfObserver = { callback, options }
+      createObserver: (...args) => {
+        state.perfObserver = { callback: args[0], args }
         return { observe: (observeOptions) => { state.perfObserve = observeOptions }, disconnect() {} }
       },
     }),
@@ -254,6 +255,7 @@ const createApp = (previous) => {
     success: () => { routeArgs.__successCalled = true },
   })
   harness.advance(120)
+  harness.setPages([page('pages/index/index'), page('pages/detail/detail', {}, '/pages/detail/detail?from=list')])
   routeArgs.success({ errMsg: 'navigateTo:ok' })
   const routeChange = harness.action('route_change').at(-1)
   assert.ok(routeChange, '应上报 route_change')
@@ -318,12 +320,12 @@ const createApp = (previous) => {
 
   // 小程序性能指标
   assert.ok(harness.state.perfObserver, '应创建 wx.getPerformance 观察者')
-  harness.state.perfObserver.callback([
+  harness.state.perfObserver.callback({ getEntries: () => [
     { entryType: 'navigation', name: 'pages/index/index', startTime: 0, duration: 500 },
     { entryType: 'render', name: 'firstRender', startTime: 0, duration: 300 },
     { entryType: 'script', name: 'app.js', startTime: 10, duration: 20 },
     { entryType: 'loadPackage', name: 'main', startTime: 5, duration: 50 },
-  ])
+  ] })
   assert.equal(harness.metric('mp_navigation')[0].value, 500)
   assert.equal(harness.metric('mp_navigation')[0].rating, 'good')
   assert.equal(harness.metric('mp_render')[0].value, 300)
@@ -494,7 +496,229 @@ const createApp = (previous) => {
 }
 
 /* -------------------------------------------------------------------------- *
- * 4. 包体守卫：uniapp 产物不得引入浏览器回放依赖
+ * 4. EntryList 宿主契约、数组兼容、异常返回与性能去重
+ * -------------------------------------------------------------------------- */
+{
+  resetShared()
+  const harness = createHarness({ pages: [page('pages/performance/index')] })
+  const monitor = createMonitor({ runtime: harness.runtime, url: MONITOR_URL, appId: 'perf-contract' })
+  monitor.performance.observeLaunch()
+  const { callback, args } = harness.state.perfObserver
+  assert.equal(args.length, 1, 'createObserver 只接收回调，观察类型由 observe 配置')
+  assert.deepEqual(harness.state.perfObserve.entryTypes, ['navigation', 'render', 'script', 'loadPackage'])
+
+  const entry = { entryType: 'render', name: 'firstRender', startTime: 10, duration: 123 }
+  const list = { entries: [entry], getEntries() { return this.entries } }
+  callback(list)
+  callback(list)
+  callback([entry, { entryType: 'script', name: 'array-fallback', startTime: 20, duration: 5 }])
+  assert.equal(harness.metric('mp_render').length, 1, 'EntryList 和数组使用相同去重集合')
+  assert.equal(harness.metric('mp_render')[0].value, 123)
+  assert.equal(harness.metric('mp_script').length, 1, '仍兼容数组形式的运行时')
+  const count = harness.emitted('performance').length
+  for (const invalid of [undefined, null, {}, { getEntries: 1 }, { getEntries: () => null },
+    { getEntries: () => ({}) }, { getEntries() { throw new Error('broken host') } }]) {
+    assert.doesNotThrow(() => callback(invalid), '无效 EntryList 不影响业务')
+  }
+  callback({ getEntries: () => [null, undefined, 'invalid', {},
+    { entryType: 'render', name: 'negative', duration: -1 },
+    { entryType: 'render', name: 'infinite', duration: Infinity }] })
+  assert.equal(harness.emitted('performance').length, count, '无效条目不上报')
+  assert.equal(harness.metric('mp_launch').length, 1)
+}
+
+/* -------------------------------------------------------------------------- *
+ * 5. query 对象和字符串使用同一规则，页面不存在事件不泄露参数
+ * -------------------------------------------------------------------------- */
+{
+  resetShared()
+  const query = Object.create({ inherited: 'skip' })
+  Object.assign(query, { tab: 'orders', page: 2, token: 'secret', PASSWORD: 'secret',
+    '%70hone': '13800000000', Email: 'private@example.com', '%ZZ': 'keep' })
+  Object.defineProperty(query, 'hidden', { value: 'skip', enumerable: false })
+  Object.freeze(query)
+  const expected = { tab: 'orders', page: 2, '%ZZ': 'keep' }
+  assert.deepEqual(sanitizeQueryObject(query), expected)
+  assert.deepEqual(sanitizeQueryObject(), {})
+  assert.deepEqual(sanitizeQueryObject(null), {})
+  assert.equal(sanitizeQueryString('token=x&PASSWORD=x&%70hone=x&Email=x&tab=orders&%ZZ=keep'),
+    'tab=orders&%ZZ=keep')
+  assert.equal(query.token, 'secret', '脱敏不能修改原始对象')
+
+  const harness = createHarness({ pages: [page('pages/query/index')] })
+  const monitor = createMonitor({ runtime: harness.runtime, url: MONITOR_URL, appId: 'query-contract' })
+  monitor.error.error()
+  harness.state.notFound[0]({ path: 'pages/missing/index', query })
+  const event = harness.error('page_not_found').at(-1)
+  assert.deepEqual(event.extra.query, expected)
+  assert.notEqual(event.extra.query, query)
+  harness.state.notFound[0]({ path: 'pages/missing/index' })
+  assert.deepEqual(harness.error('page_not_found').at(-1).extra.query, {})
+  await flushMicrotasks()
+  const sent = harness.state.requests.flatMap(request => harness.parseRequest(request).events)
+  assert.ok(sent.some(event => event.error_type === 'page_not_found'))
+  assert.ok(sent.filter(event => event.error_type === 'page_not_found')
+    .every(event => !Object.keys(event.extra.query).some(key => /token|password|phone|email/i.test(key))))
+}
+
+/* -------------------------------------------------------------------------- *
+ * 6. 自动 PV 与 routeChange 开关独立；手动 PV 和 runtime 去重
+ * -------------------------------------------------------------------------- */
+for (const routeChange of [false, true]) {
+  for (const pageView of [false, true]) {
+    resetShared()
+    const harness = createHarness({ pages: [page('pages/options/home')] })
+    const monitor = createMonitor({ runtime: harness.runtime, url: MONITOR_URL, appId: 'pv-options',
+      routeChange, pageView, performance: false })
+    monitor.observer()
+    assert.equal(harness.action('page_view').length, Number(pageView), '初始 PV 服从开关')
+    const navigation = routeChange || pageView
+      ? harness.invoke('navigateTo', { url: '/pages/options/detail' }) : undefined
+    harness.setPages([page('pages/options/home'), page('pages/options/detail')])
+    navigation?.success({})
+    assert.equal(harness.action('route_change').length, Number(routeChange))
+    assert.equal(harness.action('page_view').length, Number(pageView) * 2, '导航 PV 服从开关')
+    monitor.behavior.trackPageView()
+    assert.equal(harness.action('page_view').length, pageView ? 2 : 1, '手动 PV 可用且保留一秒去重')
+    monitor.behavior.trackPageView()
+    assert.equal(harness.action('page_view').length, pageView ? 2 : 1)
+    harness.advance(1000)
+    monitor.behavior.trackPageView()
+    assert.equal(harness.action('page_view').length, pageView ? 3 : 2, '一秒后可以再次补报')
+  }
+}
+
+{
+  resetShared()
+  const first = createHarness({ pages: [page('pages/isolation/shared')] })
+  const second = createHarness({ pages: [page('pages/isolation/shared')] })
+  const makeMonitor = runtime => createMonitor({ runtime, url: MONITOR_URL, appId: 'route-isolation' })
+  const firstMonitor = makeMonitor(first.runtime)
+  const secondMonitor = makeMonitor(second.runtime)
+  firstMonitor.behavior.pv()
+  secondMonitor.behavior.pv()
+  makeMonitor(first.runtime).behavior.pv()
+  assert.equal(first.action('page_view').length, 1, '同一 runtime 共享 PV 去重')
+  assert.equal(second.action('page_view').length, 1, '不同 runtime 的相同路径不能互相去重')
+  first.setPages([page('pages/isolation/changed')])
+  firstMonitor.behavior.track('first')
+  secondMonitor.behavior.track('second')
+  assert.equal(first.action('first')[0].referrer, '/pages/isolation/shared')
+  assert.equal(second.action('second')[0].route, '/pages/isolation/shared')
+  assert.equal(second.action('second')[0].referrer, undefined, '路由历史不能跨 runtime 串扰')
+}
+
+/* -------------------------------------------------------------------------- *
+ * 7. 实时页面归属、空栈缓存、导航回调与页面栈更新的时序
+ * -------------------------------------------------------------------------- */
+{
+  resetShared()
+  const home = page('pages/live/home')
+  const detail = page('pages/live/detail')
+  const third = page('pages/live/third')
+  const harness = createHarness({ pages: [home] })
+  harness.runtime.wx.getLaunchOptionsSync = () => ({ path: home.route })
+  const monitor = createMonitor({ runtime: harness.runtime, url: MONITOR_URL, appId: 'live-route',
+    performance: false })
+  monitor.observer()
+  harness.setPages([home, detail]) // 模拟未经过拦截器的 navigator 跳转
+  monitor.behavior.track('native-navigation')
+  monitor.behavior.track('same-page')
+  for (const action of ['native-navigation', 'same-page']) {
+    assert.equal(harness.action(action)[0].page_url, '/pages/live/detail')
+    assert.equal(harness.action(action)[0].referrer, '/pages/live/home')
+  }
+  assert.equal(harness.action('page_view').length, 1, '校准归属本身不自动补 PV')
+
+  const request = harness.invoke('request', { url: 'https://api.example.com/live' })
+  harness.setPages([home, detail, third])
+  request.success({ statusCode: 200 })
+  assert.equal(harness.emitted('request').at(-1).route, '/pages/live/third', '请求按完成时页面归属')
+  assert.equal(harness.emitted('request').at(-1).referrer, '/pages/live/detail')
+  harness.setPages([page('pages/live/error')])
+  harness.state.errors[0]('Error: live page')
+  assert.equal(harness.error('js_error').at(-1).route, '/pages/live/error')
+  assert.equal(harness.error('js_error').at(-1).referrer, '/pages/live/third')
+  harness.setPages([home, detail, third])
+  monitor.behavior.trackPageView()
+  assert.equal(harness.action('page_view').at(-1).page_url, '/pages/live/third')
+
+  harness.setPages([])
+  monitor.behavior.track('empty-stack')
+  assert.equal(harness.action('empty-stack')[0].route, '/pages/live/third', '空栈不能退回启动页')
+  const readPages = harness.runtime.getCurrentPages
+  harness.runtime.getCurrentPages = () => { throw new Error('temporarily unavailable') }
+  monitor.behavior.track('broken-stack')
+  assert.equal(harness.action('broken-stack')[0].route, '/pages/live/third')
+  harness.runtime.getCurrentPages = readPages
+  harness.setPages([home, detail, third])
+
+  const back = harness.invoke('navigateBack', { delta: 2 })
+  back.success({}) // 成功回调早于页面栈更新
+  const backEvent = harness.action('route_change').at(-1)
+  assert.equal(backEvent.to_route, '/pages/live/home', 'delta=2 从调用前快照推导目标')
+  assert.equal(backEvent.page_url, '/pages/live/home')
+  assert.equal(backEvent.referrer, '/pages/live/third')
+  monitor.behavior.track('before-stack-update')
+  assert.equal(harness.action('before-stack-update')[0].route, '/pages/live/third', '不提前提交目标页')
+  harness.setPages([home])
+  monitor.behavior.track('after-stack-update')
+  assert.equal(harness.action('after-stack-update')[0].route, '/pages/live/home')
+  assert.equal(harness.action('after-stack-update')[0].referrer, '/pages/live/third')
+
+  const failed = harness.invoke('redirectTo', { url: '/pages/live/missing?token=private&tab=1' })
+  failed.fail({ errMsg: 'redirectTo:fail' })
+  const failure = harness.action('route_change').at(-1)
+  assert.equal(failure.page_url, '/pages/live/home')
+  assert.equal(failure.route, '/pages/live/home')
+  assert.equal(failure.to_route, '/pages/live/missing?tab=1')
+  assert.equal(failure.referrer, '/pages/live/third')
+
+  const forward = harness.invoke('navigateTo', { url: '/pages/live/detail' })
+  forward.success({})
+  assert.equal(harness.action('route_change').at(-1).page_url, '/pages/live/detail')
+  monitor.behavior.track('forward-before-stack-update')
+  assert.equal(harness.action('forward-before-stack-update')[0].route, '/pages/live/home')
+  assert.equal(harness.action('forward-before-stack-update')[0].referrer, '/pages/live/third')
+  harness.setPages([home, detail])
+  monitor.behavior.track('forward-after-stack-update')
+  assert.equal(harness.action('forward-after-stack-update')[0].referrer, '/pages/live/home')
+
+  const immediateBack = harness.invoke('navigateBack', {})
+  harness.setPages([home])
+  immediateBack.success({})
+  assert.equal(harness.action('route_change').at(-1).to_route, '/pages/live/home')
+  assert.equal(harness.action('route_change').at(-1).referrer, '/pages/live/detail')
+  monitor.behavior.track('back-after-stack-update')
+  assert.equal(harness.action('back-after-stack-update')[0].referrer, '/pages/live/detail')
+
+  harness.setPages([home, detail, third])
+  monitor.behavior.track('before-live-back')
+  const liveBack = harness.invoke('navigateBack', { delta: 2 })
+  harness.setPages([page('pages/live/home', {}, '/pages/live/home?tab=updated')])
+  liveBack.success({})
+  assert.equal(harness.action('route_change').at(-1).to_route, '/pages/live/home?tab=updated',
+    '成功后真实页面栈优先于返回目标快照')
+  await flushMicrotasks()
+}
+
+{
+  resetShared()
+  const harness = createHarness()
+  harness.runtime.wx.getLaunchOptionsSync = () => ({ path: 'pages/launch/index', query: { tab: '1', token: 'secret' } })
+  const monitor = createMonitor({ runtime: harness.runtime, url: MONITOR_URL, appId: 'launch-fallback' })
+  monitor.behavior.track('launch-fallback')
+  assert.equal(harness.action('launch-fallback')[0].page_url, '/pages/launch/index?tab=1')
+  harness.setPages([page('pages/launch/next')])
+  monitor.behavior.track('real-page')
+  assert.equal(harness.action('real-page')[0].referrer, '/pages/launch/index?tab=1')
+  harness.setPages([])
+  monitor.behavior.track('keep-real-page')
+  assert.equal(harness.action('keep-real-page')[0].route, '/pages/launch/next')
+}
+
+/* -------------------------------------------------------------------------- *
+ * 8. 包体守卫：uniapp 产物不得引入浏览器回放依赖
  * -------------------------------------------------------------------------- */
 {
   const code = readFileSync(distPath, 'utf8')

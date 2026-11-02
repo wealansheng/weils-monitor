@@ -127,7 +127,7 @@ export const report = (data: QueueReportData): void => defaultReporter.report(da
 export const setupExitFlush = (): void => defaultReporter.setupExitFlush()
 
 /** Re-export the browser-free context helpers used by non-DOM hosts. */
-export { sanitizeUrl, sanitizeQueryString, isMonitorRequest } from './context'
+export { sanitizeUrl, sanitizeQueryString, sanitizeQueryObject, isMonitorRequest } from './context'
 
 // Keep InitOptions referenced for adapters that type their options through this entry.
 export type { InitOptions }

@@ -1,10 +1,9 @@
 import type { BehaviorReportData, BehaviorTarget } from '@weils-monitor/shared'
 import {
-  currentRoute,
   markPageView,
+  pageRoute,
   readRouteState,
   routeFromUrl,
-  setRouteState,
   whenRouteReady,
 } from '../route'
 import type { PageRoute } from '../route'
@@ -25,7 +24,7 @@ const reportPageView = (
   route: PageRoute,
   referrer?: string,
 ): void => {
-  if (!markPageView(route, context.runtime.now())) return
+  if (!markPageView(context.runtime, route, context.runtime.now())) return
   context.report({
     event_type: 'behavior',
     action: 'page_view',
@@ -38,11 +37,10 @@ const reportPageView = (
 /** 初始页面访问：等待 getCurrentPages 出现首屏页面后上报。 */
 export const collectPageView = (context: CollectorContext): void => {
   if (!context.options.pageView) return
-  whenRouteReady(context.runtime, (route) => {
-    const resolved = route.fullPath ? route : readRouteState(context.runtime).current
-    if (!resolved.fullPath) return
-    const state = setRouteState(context.runtime, resolved)
-    reportPageView(context, resolved, state.referrer)
+  whenRouteReady(context.runtime, () => {
+    if (!context.options.pageView) return
+    const state = readRouteState(context.runtime)
+    reportPageView(context, state.current, state.referrer)
   })
 }
 
@@ -62,8 +60,17 @@ export const collectPageChange = (context: CollectorContext): void => {
           record.__weilsRoute = true
 
           const start = context.runtime.now()
-          const from = readRouteState(context.runtime).current
-          const target = typeof record.url === 'string' ? routeFromUrl(record.url) : undefined
+          const fromState = readRouteState(context.runtime)
+          const from = fromState.current
+          let target = typeof record.url === 'string' ? routeFromUrl(record.url) : undefined
+          if (api === 'navigateBack') {
+            try {
+              const pages = context.runtime.getCurrentPages()
+              const rawDelta = Math.floor(Number(record.delta ?? 1))
+              const delta = Number.isFinite(rawDelta) && rawDelta > 0 ? rawDelta : 1
+              target = pageRoute(pages[Math.max(0, pages.length - 1 - delta)])
+            } catch { /* live page stack at completion is still available as a fallback */ }
+          }
           const originalSuccess = record.success as ((res: unknown) => void) | undefined
           const originalFail = record.fail as ((res: unknown) => void) | undefined
           let finished = false
@@ -73,26 +80,29 @@ export const collectPageChange = (context: CollectorContext): void => {
             finished = true
 
             const duration = Math.max(0, context.runtime.now() - start)
-            const to = target?.fullPath ? target : currentRoute(context.runtime)
-            // 导航失败时当前页面没有变化，不能把 route state 指向失败目标。
-            const state = success
-              ? setRouteState(context.runtime, to, from)
-              : readRouteState(context.runtime)
+            // 只根据实际页面栈校准公共状态，目标页不能提前写入缓存。
+            const state = readRouteState(context.runtime)
+            const liveBack = api === 'navigateBack' && state.current.fullPath !== from.fullPath
+            const to = liveBack ? state.current : target?.fullPath ? target : state.current
+            const page = success ? to : from
+            const referrer = success && to.fullPath !== from.fullPath ? from.fullPath : fromState.referrer
 
             if (context.options.routeChange) {
               const data: BehaviorReportData = {
                 event_type: 'behavior',
                 action: 'route_change',
-                from_route: (success && state.referrer ? state.referrer : state.current.fullPath) || undefined,
+                from_route: from.fullPath || undefined,
                 to_route: to.fullPath || undefined,
-                route: to.path || undefined,
+                page_url: page.fullPath || undefined,
+                route: page.path || undefined,
+                referrer: referrer || undefined,
                 duration,
                 category: 'navigation',
                 ...(success ? {} : { properties: { success: false, message: messageOf(result) } }),
               }
               context.report(data)
             }
-            if (success) reportPageView(context, to, state.referrer)
+            if (success && context.options.pageView) reportPageView(context, to, referrer)
           }
 
           record.success = function monitoredRouteSuccess(this: unknown, res: unknown): void {
@@ -110,11 +120,8 @@ export const collectPageChange = (context: CollectorContext): void => {
 
 /** 手动补报页面访问，覆盖 <navigator>、自定义路由等拦截不到的场景。 */
 export const trackPageView = (context: CollectorContext): void => {
-  const live = currentRoute(context.runtime)
-  const resolved = live.fullPath ? live : readRouteState(context.runtime).current
-  if (!resolved.fullPath) return
-  const state = setRouteState(context.runtime, resolved)
-  reportPageView(context, resolved, state.referrer)
+  const state = readRouteState(context.runtime)
+  reportPageView(context, state.current, state.referrer)
 }
 
 /** 自定义行为事件，字段遵循上报协议的 behavior 约定。 */

@@ -29,6 +29,8 @@ Vue 2：`Vue.use(monitor)`；同样在 `onLaunch` 调用 `monitor.observer()`。
 
 `app.use(monitor)` 只安装 Vue 错误处理器，不启动采集；`observer()` 才按开关启动各项采集器，同一实例重复调用不会重复监听。
 
+`pageView: false` 只关闭初始与导航成功后的自动 PV，不影响显式调用 `monitor.behavior.trackPageView()`。`routeChange` 与 `pageView` 独立生效，手动和自动 PV 在同一 runtime 内共享一秒去重。
+
 ## 运行时与配置
 
 - **uni 注入**：小程序 app service 不暴露 `globalThis.uni`。SDK 产物保留裸 `uni` / `wx` 标识符，由 uni-app 的 Vite 注入插件替换为真实运行时；无需在业务代码里传 `runtime`。
@@ -66,6 +68,10 @@ Vue 2：`Vue.use(monitor)`；同样在 `onLaunch` 调用 `monitor.observer()`。
 | `wx.onMemoryWarning` | `stability` | `issue_type: memory_warning` |
 
 公共字段：`app_id`、`projectName`、`release`、`environment`、`user_id`、`session_id`（每次小程序进程启动生成，可用 `sessionId` 覆盖）、`trace_id`、`sdk_version`、`page_url`、`route`、`referrer`、`device`、`browser`（WeChat）、`os`、`network`、`locale`、`screen`、`viewport`。小程序没有域名，`page_url` 为应用内路径；query 中的 `token/password/session/...` 等敏感参数会被移除。
+
+每条事件上报时都会校准实时页面栈，并在页面变化时记录上一页面为 `referrer`；同页重复读取不改变来源。页面栈暂时为空时保留最近页面，仅首次无已知页面时回退启动参数。普通事件按上报时页面归属；导航成功事件显式记录目标页，失败事件保留源页面字段。此校准不自动补报 `<navigator>` 或系统返回的 PV。
+
+`onPageNotFound` 的 `extra.query` 与 URL query 共用敏感键过滤规则，删除敏感字段，保留普通字段，且不修改宿主传入的对象。
 
 ## 限制与替代方案
 
@@ -119,6 +125,13 @@ pnpm smoke:uniapp
 
 `pnpm smoke:core` 额外验证多份 shared 副本共享同一 `config`/队列，避免再次出现“配置 8888、请求 8080”。
 
+四处采集修复的回归还覆盖 EntryList/数组性能回调与异常返回、敏感 query 对象、PV 开关四种组合、手动补报、实时页面归属、导航成功回调与页面栈更新的先后时序、多级返回、空栈缓存，以及不同 runtime 的状态隔离。
+
+### 本次修复验证记录（2026-11-02）
+
+- 自动化：uniapp 及依赖构建、uniapp/core 类型检查、`pnpm smoke:uniapp`、`pnpm smoke:core` 均通过。
+- 宿主验收：未执行；本次执行环境未检测到运行中的微信开发者工具。仍需在宿主中验证真实 EntryList 回调、导航返回和敏感 query，不能以模拟测试代替该结果。
+
 ## 微信开发者工具验收清单
 
 1. 本地联调：`monitor-backend` 设置 `HOST=0.0.0.0` 并启动；示例 `url` 使用 `http://127.0.0.1:8888/api/v1/monitor`，`debug: true`；微信开发者工具勾选“不校验合法域名”。真机/生产改为绝对 HTTPS 地址并配置合法域名。
@@ -131,3 +144,7 @@ pnpm smoke:uniapp
 8. 控制台出现一次 Replay 不支持提示，页面无异常。
 9. 使用 `<navigator>` 或系统返回后调用 `monitor.behavior.trackPageView()`，确认可手动补报页面访问。
 10. 验证 ClickHouse/工作台：`GET /api/v1/dashboard/overview?app_id=...` 或工作台能看到对应应用事件。
+11. 确认真正的性能回调通过 `entryList.getEntries()` 产生 `mp_render` 等事件；关闭 `performance` 后不产生性能事件。
+12. 设置 `pageView: false`：进入页面和导航不自动上报 PV，显式调用 `trackPageView()` 仍可补报；单独关闭 `routeChange` 不影响自动 PV。
+13. 使用系统返回或 `<navigator>` 切换页面后触发行为、请求或错误：确认公共页面字段已更新，`referrer` 是上一页面，同页重复事件不改变来源。
+14. 打开带 `token/password/phone` 和普通 `tab` 参数的不存在页面：确认接收到的 `extra.query` 只保留普通参数。

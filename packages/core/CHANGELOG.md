@@ -1,5 +1,11 @@
 # @weils-monitor/core
 
+## 1.3.2
+
+### Patch Changes
+
+- 性能回调,过滤 query,修改 pv 开关
+
 ## 1.3.1
 
 ### Patch Changes

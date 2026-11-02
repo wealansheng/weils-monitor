@@ -1,5 +1,13 @@
 # @weils-monitor/nuxt
 
+## 2.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @weils-monitor/core@1.3.2
+  - @weils-monitor/vue@1.2.2
+
 ## 2.1.1
 
 ### Patch Changes

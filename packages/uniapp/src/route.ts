@@ -14,6 +14,8 @@ export interface RouteState {
 }
 
 const EMPTY_ROUTE: PageRoute = { path: '', fullPath: '' }
+const routeStates = new WeakMap<ResolvedRuntime, RouteState>()
+const pageViews = new WeakMap<ResolvedRuntime, { route: string; at: number }>()
 
 const normalizePath = (value: string): string => {
   if (!value) return ''
@@ -49,9 +51,8 @@ const readPage = (runtime: ResolvedRuntime): PageInstance | undefined => {
   }
 }
 
-/** 当前页面路径：优先 getCurrentPages，其次启动参数，最后复用已记录的状态。 */
-export const currentRoute = (runtime: ResolvedRuntime): PageRoute => {
-  const page = readPage(runtime)
+/** 页面实例转为已脱敏的应用内路径，也用于导航返回的栈快照。 */
+export const pageRoute = (page?: PageInstance): PageRoute => {
   const route = page?.$page?.route ?? page?.route
   const fullPath = page?.$page?.fullPath ?? page?.fullPath
   const options = page?.$page?.options ?? page?.options
@@ -59,6 +60,16 @@ export const currentRoute = (runtime: ResolvedRuntime): PageRoute => {
   if (route || fullPath) {
     return routeFromUrl(fullPath || `${normalizePath(route ?? '')}${buildQuery(options)}`)
   }
+  return EMPTY_ROUTE
+}
+
+/** 当前页面路径：实时页面栈优先，空栈保留缓存，仅首次读取回退启动参数。 */
+export const currentRoute = (runtime: ResolvedRuntime): PageRoute => {
+  const live = pageRoute(readPage(runtime))
+  if (live.fullPath) return live
+
+  const cached = routeStates.get(runtime)?.current
+  if (cached?.fullPath) return cached
 
   try {
     const launch = runtime.wx?.getLaunchOptionsSync?.()
@@ -68,36 +79,23 @@ export const currentRoute = (runtime: ResolvedRuntime): PageRoute => {
   return EMPTY_ROUTE
 }
 
-let state: RouteState = { current: EMPTY_ROUTE, referrer: '' }
-
-/** 读取路由状态；尚未初始化时用当前页面兜底。 */
+/** 每次采集核对页面栈；只有页面实际改变时才更新 referrer。 */
 export const readRouteState = (runtime: ResolvedRuntime): RouteState => {
-  if (!state.current.fullPath) {
-    const route = currentRoute(runtime)
-    if (route.fullPath) state.current = route
+  let state = routeStates.get(runtime)
+  const current = currentRoute(runtime)
+  if (!state || (current.fullPath && current.fullPath !== state.current.fullPath)) {
+    state = { current, referrer: state?.current.fullPath ?? '' }
+    routeStates.set(runtime, state)
   }
   return state
 }
 
-/** 更新当前页面并记录上一页面，供 referrer 使用。 */
-export const setRouteState = (
-  runtime: ResolvedRuntime,
-  to: PageRoute,
-  from?: PageRoute,
-): RouteState => {
-  const current = to.fullPath ? to : currentRoute(runtime)
-  const referrer = from?.fullPath ?? (current.fullPath === state.current.fullPath ? state.referrer : state.current.fullPath)
-  state = { current, referrer }
-  return state
-}
-
-let lastPageView = { route: '', at: 0 }
-
-/** 同一 fullPath 1 秒内只上报一次 page_view。 */
-export const markPageView = (route: PageRoute, now: number): boolean => {
+/** 同一 runtime 内，同一 fullPath 1 秒内只上报一次 page_view。 */
+export const markPageView = (runtime: ResolvedRuntime, route: PageRoute, now: number): boolean => {
   if (!route.fullPath) return false
-  if (lastPageView.route === route.fullPath && now - lastPageView.at < 1000) return false
-  lastPageView = { route: route.fullPath, at: now }
+  const lastPageView = pageViews.get(runtime)
+  if (lastPageView?.route === route.fullPath && now - lastPageView.at < 1000) return false
+  pageViews.set(runtime, { route: route.fullPath, at: now })
   return true
 }
 

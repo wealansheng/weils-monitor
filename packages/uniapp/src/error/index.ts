@@ -1,3 +1,4 @@
+import { sanitizeQueryObject } from '@weils-monitor/core/reporter'
 import type { ErrorReportData } from '@weils-monitor/shared'
 import type { CollectorContext } from '../types'
 
@@ -108,7 +109,7 @@ export const collectError = (context: CollectorContext): void => {
           url: path || undefined,
           route: path || undefined,
           tags: { source: 'onPageNotFound' },
-          extra: { query: res?.query ?? {}, is_entry_page: Boolean(res?.isEntryPage) },
+          extra: { query: sanitizeQueryObject(res?.query), is_entry_page: Boolean(res?.isEntryPage) },
         }
         context.report(data)
       },

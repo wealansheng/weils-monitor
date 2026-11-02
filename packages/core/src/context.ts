@@ -3,6 +3,22 @@ import type { BaseReportData, ClientInfo, DeviceInfo } from '@weils-monitor/shar
 
 const SENSITIVE_QUERY_KEY = /pass(word)?|token|secret|auth|cookie|session|code|otp|phone|email/i
 
+const isSensitiveQueryKey = (rawKey: string): boolean => {
+  let key = rawKey
+  try { key = decodeURIComponent(rawKey) } catch { /* keep the raw key */ }
+  return SENSITIVE_QUERY_KEY.test(key)
+}
+
+/** 过滤 query 对象的自有可枚举字段，不修改宿主传入的对象。 */
+export const sanitizeQueryObject = (query?: Record<string, unknown>): Record<string, unknown> => {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (isSensitiveQueryKey(key)) continue
+    Object.defineProperty(result, key, { value, enumerable: true, writable: true, configurable: true })
+  }
+  return result
+}
+
 /**
  * 移除敏感查询参数，保留参数顺序与编码。
  * 不依赖 URL / URLSearchParams，供没有这些全局对象的小程序运行时使用。
@@ -13,10 +29,7 @@ export const sanitizeQueryString = (query: string): string => {
     .split('&')
     .filter((pair) => {
       if (!pair) return false
-      const rawKey = pair.split('=')[0] ?? ''
-      let key = rawKey
-      try { key = decodeURIComponent(rawKey) } catch { /* keep the raw key */ }
-      return !SENSITIVE_QUERY_KEY.test(key)
+      return !isSensitiveQueryKey(pair.split('=')[0] ?? '')
     })
     .join('&')
 }
@@ -27,7 +40,7 @@ export const sanitizeUrl = (value: string): string => {
   try {
     const url = new URL(value, window.location.href)
     for (const key of [...url.searchParams.keys()]) {
-      if (SENSITIVE_QUERY_KEY.test(key)) url.searchParams.delete(key)
+      if (isSensitiveQueryKey(key)) url.searchParams.delete(key)
     }
     return url.toString()
   } catch {
