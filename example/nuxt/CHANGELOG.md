@@ -1,5 +1,12 @@
 # @weils-monitor/example-nuxt
 
+## 0.0.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @weils-monitor/nuxt@2.2.0
+
 ## 0.0.5
 
 ### Patch Changes

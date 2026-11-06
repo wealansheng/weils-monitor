@@ -103,6 +103,10 @@ export const createMonitor = (options: InitOptions) => {
       behaviorCollectors.addClickHandler(attribute);
       return monitor;
     },
+    addReplayHandler: (attribute: string) => {
+      behaviorCollectors.addReplayHandler(attribute);
+      return monitor;
+    },
     observer: (): void => {
       if (installedApp) startVueTiming(installedApp);
       error.error();

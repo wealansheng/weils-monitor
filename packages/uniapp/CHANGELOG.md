@@ -1,5 +1,14 @@
 # @weils-monitor/uniapp
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @weils-monitor/shared@1.5.0
+  - @weils-monitor/core@1.4.0
+  - @weils-monitor/utils@1.2.2
+
 ## 1.1.1
 
 ### Patch Changes

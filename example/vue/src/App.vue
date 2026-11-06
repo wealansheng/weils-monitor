@@ -289,6 +289,11 @@ monitor.observer()
             <span><strong>自定义上报数据</strong><small>自定义属性 custom-data</small></span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
           </button>
+          <button type="button" data-replay="自定义录制上传">
+            <span class="action-index">I</span>
+            <span><strong>上传操作录制</strong><small>按 Replay 前后窗口上传</small></span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>
+          </button>
         </div>
       </div>
 

@@ -2,11 +2,13 @@
 <h1>录制测试</h1><input id="input" aria-label="内容"><input type="password" value="password-secret">
 <div class="rr-mask">private-text</div><div data-private>blocked-secret</div>
 <button id="mutate">改变 DOM</button><div id="output"></div><div style="height:2000px"></div>
+<button id="replay" data-action="普通点击" data-replay="提交订单"><span id="replay-child">提交</span></button>
 <script type="module">
 import { createRecorder } from '../src/index.ts'
 import { createReplayPlayer } from '../src/player.ts'
 import { decode } from '../src/codec.ts'
 import { createMonitorCore } from '../../core/src/runtime.ts'
+import { createMonitor } from '../../vue/src/index.ts'
 window.statuses = []
 window.createReplayPlayer = createReplayPlayer
 window.decode = decode
@@ -20,6 +22,17 @@ window.beginMonitor = async (options = {}) => {
     replay: { enabled: true, url: '/api/v1/records', beforeErrorMs: 1000, afterErrorMs: 150, persistIntervalMs: 50,
       onStatus: status => window.statuses.push(status) }, ...options })
   await window.monitor.replay.start()
+}
+window.beginVueMonitor = (options = {}) => {
+  window.reports = []
+  window.addEventListener('weils-monitor:report', event => window.reports.push(event.detail))
+  const { replay = {}, ...rest } = options
+  window.monitor = createMonitor({ appId: 'browser-integration', url: '/api/v1/monitor', ...rest,
+    replay: { enabled: true, url: '/api/v1/records', beforeErrorMs: 1000, afterErrorMs: 150,
+      persistIntervalMs: 50, ...replay } })
+  window.chainWorks = window.monitor.addClickHandler('data-action').addReplayHandler(' DATA-REPLAY ').addReplayHandler('data-replay') === window.monitor
+  window.monitor.behavior.click()
+  return window.monitor.replay.start()
 }
 document.querySelector('#mutate').onclick = () => { document.querySelector('#output').textContent = 'DOM changed' }
 </script></body></html>

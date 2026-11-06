@@ -3,6 +3,7 @@ import { IDBFactory, IDBDatabase } from 'fake-indexeddb'
 import { gzipSync, strToU8 } from 'fflate'
 import { createRecorder } from './index'
 import { decode, encode, splitRecord, toBase64 } from './codec'
+import * as codec from './codec'
 import { sanitizeEvent } from './privacy'
 import { ReplayStore } from './storage'
 import { decodeRecordChunks } from './player'
@@ -75,6 +76,152 @@ describe('recording codec and privacy', () => {
   })
 })
 describe('local durability and upload', () => {
+  async function abandoned(onMounted: boolean, user = '') {
+    const store = new ReplayStore(() => {}); await store.open()
+    const timestamp = Date.now() - 2000
+    const encoded = await encode(snapshot(timestamp))
+    const row = { app: 'app', owner: 'closed', leaseUntil: 0, createdAt: timestamp }
+    await store.commit([
+      { ...row, key: 'batch:retained', kind: 'batch', data: encoded.payload },
+      { ...row, key: 'state:retained', kind: 'state', data: {
+        metadata: { ...metadata, session_id: 'previous-session', user_id: user, route: '/previous' },
+        keys: ['batch:retained'], onMounted, endedAt: timestamp + 500,
+      } },
+    ])
+    return store
+  }
+  it.each([undefined, false])('retains an untriggered exit when onMounted=%s and releases it only on a new event', async onMounted => {
+    const item = recorder({ onMounted, afterErrorMs: 10_000 }); await item.start()
+    snapshot().forEach(event => mock.options.emit(event))
+    window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: false }))
+    const store = new ReplayStore(() => {}); await store.open()
+    await until(async () => (await store.list()).some(row => row.kind === 'state' && row.leaseUntil === 0))
+    expect(fetch).not.toHaveBeenCalled()
+    const next = recorder(); await next.start(); snapshot().forEach(event => mock.options.emit(event))
+    await next.flush(); expect(fetch).not.toHaveBeenCalled()
+    await next.capture(eventId, Date.now(), { type: 'custom', action: '提交订单' }); await next.stop()
+    const chunks = (fetch as any).mock.calls.map((call: any) => JSON.parse(call[1].body))
+    expect(chunks).toHaveLength(2)
+    expect(chunks[0].linked_event_ids).toContain(eventId)
+    expect(chunks[0].ended_at).toBeLessThanOrEqual(chunks[1].started_at)
+    expect(chunks[1].errors).toEqual([])
+    expect(chunks[1].triggers[0]).toMatchObject({ type: 'custom', event_id: eventId, action: '提交订单' })
+    await expect(decodeRecordChunks([chunks[0]])).resolves.toBeInstanceOf(Array)
+    store.close()
+  })
+  it('releases a previous page independently and only for the same app/user', async () => {
+    const store = await abandoned(false, 'alice')
+    const wrongUser = recorder({ userId: 'bob' }); await wrongUser.start(); snapshot().forEach(event => mock.options.emit(event))
+    await wrongUser.capture(eventId); await wrongUser.stop()
+    expect((await store.list()).some(row => row.key === 'state:retained')).toBe(true)
+    const item = recorder({ userId: 'alice' }); await item.start(); snapshot().forEach(event => mock.options.emit(event))
+    const id = '82222222-2222-4222-8222-222222222222'
+    await item.capture(id); await item.stop()
+    const old = (fetch as any).mock.calls.map((call: any) => JSON.parse(call[1].body)).find((chunk: any) => chunk.session_id === 'previous-session')
+    expect(old).toMatchObject({ route: '/previous', user_id: 'alice', linked_event_ids: [id], errors: [] })
+    expect(old.triggers[0].type).toBe('pagehide')
+    expect(old.ended_at).toBeLessThan(Date.now() - 1000)
+    store.close()
+  })
+  it('releases a closed document immediately when its absent Web Lock proves the lease is stale', async () => {
+    vi.stubGlobal('navigator', { locks: { request: (_name: string, options: unknown, callback?: (lock: object) => unknown) =>
+      typeof options === 'function' ? options({}) : callback?.({}) } })
+    const store = await abandoned(false)
+    await store.commit((await store.list()).map(row => ({ ...row, leaseUntil: Date.now() + 60_000 })))
+    const item = recorder(); await item.start(); snapshot().forEach(event => mock.options.emit(event))
+    expect(fetch).not.toHaveBeenCalled()
+    await item.capture(eventId); await item.stop()
+    expect((fetch as any).mock.calls).toHaveLength(2)
+    expect((await store.list()).some(row => row.key === 'state:retained')).toBe(false)
+    store.close()
+  })
+  it.each([true, false])('sends the prebuilt exit payload by Beacon and retries it unchanged (accepted=%s)', async accepted => {
+    const beacon = vi.fn(() => accepted); vi.stubGlobal('navigator', { sendBeacon: beacon })
+    const item = recorder({ onMounted: true }); await item.start(); snapshot().forEach(event => mock.options.emit(event))
+    const store = new ReplayStore(() => {}); await store.open()
+    await until(async () => (await store.list()).some(row => row.kind === 'state' && (row.data as any).prepared?.length))
+    window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: false }))
+    expect(beacon).toHaveBeenCalledTimes(1)
+    expect(beacon.mock.calls[0][0]).toBe('/api/v1/records')
+    const payload = JSON.parse(await (beacon.mock.calls[0][1] as Blob).text())
+    expect(payload.errors).toEqual([]); expect(payload.triggers[0].type).toBe('pagehide')
+    expect(statuses.some(status => status.type === 'uploaded')).toBe(false)
+    await until(async () => (await store.list()).some(row => row.kind === 'state' && row.leaseUntil === 0))
+    await recorder().start(); await until(() => (fetch as any).mock.calls.length > 0)
+    expect(JSON.parse((fetch as any).mock.calls[0][1].body)).toEqual(payload)
+    store.close()
+  })
+  it('does not upload for tab hiding or BFCache pagehide/pageshow', async () => {
+    const beacon = vi.fn(); vi.stubGlobal('navigator', { sendBeacon: beacon })
+    const item = recorder({ onMounted: true, afterErrorMs: 10_000 }); await item.start(); snapshot().forEach(event => mock.options.emit(event))
+    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: true }))
+    await item.flush(); expect(fetch).not.toHaveBeenCalled(); expect(beacon).not.toHaveBeenCalled()
+    window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }))
+    await item.capture(eventId); await item.stop()
+    expect(fetch).toHaveBeenCalled()
+  })
+  it('expires waiting checkpoints without needing a new trigger', async () => {
+    const store = await abandoned(false)
+    await recorder({ retentionMs: 10 }).start()
+    expect((await store.list()).some(row => row.key === 'state:retained')).toBe(false)
+    expect(fetch).not.toHaveBeenCalled(); store.close()
+  })
+  it.each([true, false])('never recreates a recording after a crash between sealing and checkpoint cleanup (onMounted=%s)', async onMounted => {
+    const store = await abandoned(onMounted)
+    const state = (await store.list()).find(row => row.kind === 'state')!
+    await store.commit([{ ...state, data: { ...(state.data as object), sealed: true } }])
+    await recorder().start()
+    expect(fetch).not.toHaveBeenCalled()
+    expect((await store.list()).some(row => row.kind === 'state')).toBe(false)
+    store.close()
+  })
+  it('keeps oversized Beacon snapshots for an identical normal upload on the next start', async () => {
+    const beacon = vi.fn(); vi.stubGlobal('navigator', { sendBeacon: beacon })
+    const item = recorder({ onMounted: true }); await item.start()
+    snapshot().forEach(event => mock.options.emit(event))
+    mock.options.emit({ type: 5, timestamp: Date.now(), data: { tag: 'noise', payload: toBase64(crypto.getRandomValues(new Uint8Array(60_000))) } })
+    const store = new ReplayStore(() => {}); await store.open()
+    await until(async () => (await store.list()).some(row => row.kind === 'state' && (row.data as any).prepared?.[0]?.encoded_bytes > 64 * 1024))
+    window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: false }))
+    expect(beacon).not.toHaveBeenCalled()
+    await until(async () => (await store.list()).some(row => row.kind === 'state' && row.leaseUntil === 0))
+    const state = (await store.list()).find(row => row.kind === 'state')!
+    const chunks = (state.data as any).prepared
+    await recorder().start(); await until(() => (fetch as any).mock.calls.length > 0)
+    expect(JSON.parse((fetch as any).mock.calls[0][1].body)).toEqual(chunks[0]); store.close()
+  })
+  it('preserves batch references when pagehide interrupts asynchronous compression', async () => {
+    const item = recorder({ maxBatchBytes: 1 }); await item.start()
+    const original = codec.encode
+    let compressing = false; let release!: () => void
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    const spy = vi.spyOn(codec, 'encode').mockImplementationOnce(async data => { compressing = true; await blocked; return original(data) })
+    try {
+      snapshot().forEach(event => mock.options.emit(event))
+      await until(() => compressing)
+      window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted: false }))
+      release()
+      const store = new ReplayStore(() => {}); await store.open()
+      await until(async () => (await store.list()).some(row => row.kind === 'state' && row.leaseUntil === 0))
+      const next = recorder(); await next.start(); snapshot().forEach(event => mock.options.emit(event))
+      await next.capture(eventId); await next.stop()
+      expect(statuses.some(status => status.message?.includes('Checkpoint batch missing'))).toBe(false)
+      expect((fetch as any).mock.calls).toHaveLength(2)
+      store.close()
+    } finally { release(); spy.mockRestore() }
+  })
+  it('seals marker-heavy custom recordings before their metadata exceeds the upload body budget', async () => {
+    const item = recorder({ afterErrorMs: 60_000, persistIntervalMs: 60_000 }); await item.start()
+    snapshot().forEach(event => mock.options.emit(event))
+    for (let i = 0; i < 70; i++) await item.capture(crypto.randomUUID(), Date.now(), { type: 'custom', action: '订单'.repeat(256) })
+    await item.stop()
+    const chunks = (fetch as any).mock.calls.map((call: any) => JSON.parse(call[1].body))
+    expect(chunks).toHaveLength(2)
+    expect(chunks[0].end_reason).toBe('size_limit')
+    expect(chunks.reduce((sum: number, chunk: any) => sum + chunk.triggers.length, 0)).toBe(70)
+    expect(chunks.every((chunk: any) => new Blob([JSON.stringify(chunk)]).size < 512 * 1024)).toBe(true)
+  })
   it('does not record sampled-out sessions and configures sampling/masking', async () => {
     await recorder({ sampleRate: 0 }).start()
     expect(mock.options).toBeUndefined()

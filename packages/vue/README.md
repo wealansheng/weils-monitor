@@ -96,7 +96,9 @@ const monitor = createMonitor({
 })
 ```
 
-开启后异步录制，`await monitor.replay.start()` 可等待就绪；普通错误采集仍需 `monitor.observer()` 或按需启动错误采集器。JS、Promise 和 Vue 组件错误自动关联真实 `event_id`，无需再次调用 `capture()`。默认保存错误前 30 秒、后 10 秒，输入值遮罩，未触发错误时不上传。
+开启后异步录制，`await monitor.replay.start()` 可等待就绪；普通错误采集仍需 `monitor.observer()` 或按需启动错误采集器。JS、Promise 和 Vue 组件错误自动关联真实 `event_id`，无需再次调用 `capture()`。`monitor.addReplayHandler('data-replay')` 注册属性，点击后上报一条以属性值为 action 的行为事件，并用同一 UUID 触发录制；同样需启动 `monitor.behavior.click()` 或 `monitor.observer()`，支持链式调用和最近祖先匹配。默认保存触发前 30 秒、后 10 秒，输入值遮罩。
+
+`replay.onMounted?: boolean` 默认 `false`：退出保留，等待下一次同应用、同用户错误或指定点击，独立补传旧片段。设为 `true` 时，无触发也通过 `navigator.sendBeacon()` 尽力退出上传，未确认数据下次打开自动补传。与 Vue 挂载生命周期无关；详细限制见 [Replay 配置](../replay/README.md#自定义点击与退出上传)。
 
 `monitor.replay` 提供 `start()`、`stop()`、`capture()`、`flush()`、`destroy()`、`subscribe()`。`flush()` 不截断当前错误窗口，`stop()` 提前封存已触发片段；状态中的 `uploaded` 表示后端回执已校验成功。配置关闭时 `start()` 不会重新启用录制。
 

@@ -1,5 +1,11 @@
 # @weils-monitor/shared
 
+## 1.5.0
+
+### Minor Changes
+
+- 添加自定义录制
+
 ## 1.4.0
 
 ### Minor Changes

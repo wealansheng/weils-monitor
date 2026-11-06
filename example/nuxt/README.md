@@ -5,7 +5,7 @@
 3. 启动后端 `http://localhost:8888`，提供 `POST /api/v1/records` 接口；在仓库根目录运行 `pnpm dev:nuxt`。
 4. 打开页面并操作几秒，点击现有的「JavaScript 错误」「Promise 拒绝」或「Nuxt 应用错误」按钮，再继续操作。
 
-SDK 仅在客户端录制，保留错误前 10 秒、后 5 秒并自动上传；重叠错误会合并。未触发错误时不上传滚动缓存，资源错误与 SSR 错误不会触发录制。控制台的 `[replay]` 日志可查看 `started`、`uploaded`、`upload-error` 等状态。修改环境变量后需重启服务。
+SDK 仅在客户端录制，保留触发前 10 秒、后 5 秒，重叠触发会合并。「上传操作录制」按钮使用 `data-replay` 属性，由客户端插件通过 `$monitor?.addReplayHandler()` 注册，同时上报行为并触发录制。`onMounted: false` 默认退出保留至同应用、同用户下次触发；设为 true 可启用 Beacon 尽力退出上传及下次自动补传。资源错误与 SSR 错误不会触发录制。控制台 `[replay]` 日志可查看录制状态。修改环境变量后需重启服务。
 
 录制请求发送到 `/api/records`，由 Nuxt 服务端转发到 `http://localhost:8888/api/v1/records`。后端收到每个分片后须返回以下 JSON，三个标识字段必须与请求一致，SDK 才会确认成功，否则会重试：
 

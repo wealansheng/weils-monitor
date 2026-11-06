@@ -13,6 +13,7 @@ export const monitor = createMonitor({
   replay: {
     // 示例默认开启；设置 VITE_MONITOR_REPLAY=false 可关闭录制。
     enabled: import.meta.env.VITE_MONITOR_REPLAY !== 'false',
+    onMounted: false,
     url: '/api/v1/records',
     sampleRate: 1,
     beforeErrorMs: 10_000,
@@ -26,4 +27,5 @@ export const monitor = createMonitor({
 
 monitor.addClickHandler('mask-close')
   .addClickHandler('mask-open')
-  .addClickHandler('custom-data');
+  .addClickHandler('custom-data')
+  .addReplayHandler('data-replay');

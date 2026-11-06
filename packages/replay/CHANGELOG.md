@@ -1,5 +1,11 @@
 # @weils-monitor/replay
 
+## 1.2.0
+
+### Minor Changes
+
+- 添加自定义录制
+
 ## 1.1.1
 
 ### Patch Changes

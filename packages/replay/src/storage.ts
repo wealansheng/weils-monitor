@@ -67,10 +67,10 @@ export class ReplayStore {
     } catch (error) { this.degrade(error) }
   }
   /** Read + conditional write in one transaction prevents two tabs claiming the same task. */
-  async claim(key: string, owner: string, duration = 30_000): Promise<Stored | undefined> {
+  async claim(key: string, owner: string, duration = 30_000, ownerAbsent = false): Promise<Stored | undefined> {
     if (!this.db) {
       const row = this.memory.get(key)
-      if (!row || row.owner !== owner && row.leaseUntil > Date.now()) return
+      if (!row || !ownerAbsent && row.owner !== owner && row.leaseUntil > Date.now()) return
       const claimed = { ...row, owner, leaseUntil: Date.now() + duration }
       this.memory.set(key, claimed)
       return claimed
@@ -83,14 +83,14 @@ export class ReplayStore {
         let claimed: Stored | undefined
         request.onsuccess = () => {
           const row = request.result as Stored | undefined
-          if (!row || row.owner !== owner && row.leaseUntil > Date.now()) return
+          if (!row || !ownerAbsent && row.owner !== owner && row.leaseUntil > Date.now()) return
           claimed = { ...row, owner, leaseUntil: Date.now() + duration }
           store.put(claimed)
         }
         tx.oncomplete = () => { if (claimed) this.memory.set(key, claimed); resolve(claimed) }
         tx.onerror = tx.onabort = () => reject(tx.error)
       })
-    } catch (error) { this.degrade(error); return this.claim(key, owner, duration) }
+    } catch (error) { this.degrade(error); return this.claim(key, owner, duration, ownerAbsent) }
   }
   close(): void { this.db?.close(); this.db = undefined }
 }

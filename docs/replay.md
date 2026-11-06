@@ -14,7 +14,9 @@ Vue/Nuxt 两个 Web 示例均转发到 `http://localhost:8888`，修改环境变
 
 `@weils-monitor/uniapp` 不支持 Replay：小程序没有 DOM，开启 `replay.enabled` 只会输出一次告警，`monitor.replay` 保留为 no-op 接口以兼容共享配置代码。需要回放时请在 H5/Web 端使用 Vue/Nuxt 包。
 
-仅 `js_error`、`promise_error`、`framework_error`、`nuxt_error`、`nuxt_chunk_error` 触发片段。普通点击、资源错误、HTTP 错误、白屏及 `nuxt_ssr_error` 不触发。未触发错误时只维护滚动缓存，不上传；重叠错误会合并，持续触发会推迟封存，最长受 `maxDurationMs` 限制。
+`js_error`、`promise_error`、`framework_error`、`nuxt_error`、`nuxt_chunk_error` 和 `monitor.addReplayHandler('data-replay')` 注册属性的点击触发片段。指定点击同时上报行为事件；普通点击、资源错误、HTTP 错误、白屏及 `nuxt_ssr_error` 不触发。重叠触发会合并，持续触发推迟封存，最长受 `maxDurationMs` 限制。
+
+`replay.onMounted` 默认 `false`：关闭、刷新、整页跳转时保留最近窗口及未完成录制，重新打开不自动上传，等同应用、同用户的新错误或指定点击才独立补传。设为 `true` 后，无触发也在退出时用 `navigator.sendBeacon()` 尽力上传预先准备好的快照，超限、失败或未确认的数据下次打开自动补传。该名称与 Vue 挂载无关；切换标签页、SPA 路由变化和 BFCache 往返不触发退出上传。完整边界见[录制配置](../packages/replay/README.md#自定义点击与退出上传)。
 
 ## 本地联调
 
@@ -26,7 +28,7 @@ Vue/Nuxt 两个 Web 示例均转发到 `http://localhost:8888`，修改环境变
 4. 等待约 5 秒及封存处理时间，在 Network 中搜索 `records`。HTTP 200 且回执中的录制 ID、片号、片校验值均匹配后，控制台应出现 `uploaded`。
 5. 工作台：先完成同级 SDK 构建，再在 `monitor-frontend` 运行 `npm install` 和 `npm run dev`，访问 `http://localhost:8866`。连接管理查询令牌，选择 `vue-example` 或 `nuxt-example`，进入「操作回放」，或从错误事件详情打开关联录制。
 
-工作台首次展示的是明确标记的演示数据，需连接数据源才会读取后端。错误关联依靠同一 `app_id` 和 `errors[].event_id`，不能用错误消息或录制 ID 代替错误 UUID。刚出现错误时，关联片段可能仍在收集后置操作，可稍后重新查询。
+工作台首次展示的是明确标记的演示数据，需连接数据源才会读取后端。错误和行为详情均可打开回放：关联依靠同一 `app_id`、真实事件 UUID 与录制的 `triggers` / `linked_event_ids`，旧录制仍读取 `errors[].event_id`。刚触发时可能仍在收集后置操作，可稍后重新查询。先部署后端，再部署管理端，最后发布 SDK；不需要新增数据库列。
 
 ## 上传回执与存储
 
@@ -50,7 +52,7 @@ SDK 待传队列默认保留 24 小时，后端录制表 TTL 默认 30 天；两
 | 现象 | 检查与处理 |
 | --- | --- |
 | 无 `[replay] started` | 检查是否被环境变量设为 `false`；通用接入需 `enabled: true`。确认 SDK 依赖已构建，页面使用 HTTPS 或 localhost |
-| 已启动但没有请求 | 使用 JS、Promise、Vue 或 Nuxt 客户端错误按钮；普通点击和资源错误不会上传。等待后置窗口结束，避免连续触发错误 |
+| 已启动但没有请求 | 使用错误按钮或「上传操作录制」指定点击；普通点击和资源错误不会上传。等待后置窗口结束，避免连续触发 |
 | `sampled-out` | 当前会话未命中录制采样；检查 `replay.sampleRate`，采样决定保存在该标签页 sessionStorage |
 | `error` / `memory-fallback` | 查看状态的 `message`，检查 Web Crypto、IndexedDB、Worker 和 CSP 的 blob worker 支持；内存回退刷新后会丢失待传片段 |
 | 请求 404 / 502 或连接失败 | 检查 8888 后端、Vue `/api` 代理或 Nuxt `server/api/records.post.ts` 的转发目标 |
@@ -60,4 +62,4 @@ SDK 待传队列默认保留 24 小时，后端录制表 TTL 默认 30 天；两
 | 工作台无录制 | 连接真实数据源，选择相同应用及时间范围，清除不匹配的用户/会话/路由筛选，等待上传后重新查询 |
 | 工作台 401 / 404 / 409 | 分别检查管理令牌、接口与录制是否存在，以及录制是否缺片或损坏；工作台不会播放不完整录制 |
 
-`monitor.replay.flush()` 只尝试上传已封存片段，不截断正在收集的错误窗口；需要提前结束时用 `stop()`，它也只封存已触发错误的片段。开关关闭时调用 `start()` 不会绕过配置启用录制。
+`monitor.replay.flush()` 只尝试上传已封存片段，不截断正在收集的触发窗口，也不释放等待新触发的旧片段；需要提前结束时用 `stop()`，它封存已触发的片段。开关关闭时调用 `start()` 不会绕过配置启用录制。

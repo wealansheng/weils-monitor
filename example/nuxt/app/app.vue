@@ -155,6 +155,7 @@ nuxtMonitor: {
             <button type="button"><strong>普通点击</strong><small>点击行为采集</small><span aria-hidden="true">↗</span></button>
             <button type="button" custom-data="nuxt_custom_click"><strong>自定义点击</strong><small>custom-data 属性配置</small><span aria-hidden="true">↗</span></button>
             <button type="button" plugin-action="nuxt_plugin_click"><strong>插件扩展点击</strong><small>自定义 client 插件配置</small><span aria-hidden="true">↗</span></button>
+            <button type="button" data-replay="nuxt_custom_replay"><strong>上传操作录制</strong><small>按 Replay 前后窗口上传</small><span aria-hidden="true">↗</span></button>
             <button type="button" @click="reportCustomEvent"><strong>自定义事件上报</strong><small>$monitor.report()</small><span aria-hidden="true">↗</span></button>
             <button type="button" @click="triggerNuxtAppError"><strong>Nuxt 应用错误</strong><small>nuxt_error</small><span aria-hidden="true">↗</span></button>
             <button type="button" @click="triggerNuxtErrorCleared"><strong>清除错误状态</strong><small>nuxt_error_cleared</small><span aria-hidden="true">↗</span></button>

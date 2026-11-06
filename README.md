@@ -173,7 +173,7 @@ replay: {
 }
 ```
 
-开启后异步启动录制；Vue 仍需调用 `monitor.observer()` 启动普通采集，Nuxt 模块会自动启动。仅已上报的 JS、Promise、Vue 和受支持的 Nuxt 客户端错误会触发片段上传。录制与普通事件使用不同接口及队列；`replay.sampleRate` 按会话实际采样。SDK 默认窗口为错误前 30 秒、后 10 秒；本仓库两个 Web 示例默认开启并缩短为前 10 秒、后 5 秒，示例只录制和上传，播放由管理工作台完成。小程序端没有 DOM，`@weils-monitor/uniapp` 不执行录制，开启 `replay.enabled` 只会输出一次告警。
+开启后异步启动录制；Vue 仍需调用 `monitor.observer()` 启动普通采集，Nuxt 模块会自动启动。JS、Promise、Vue、受支持的 Nuxt 客户端错误，以及 `monitor.addReplayHandler('data-replay')` 注册属性的点击会触发片段上传；指定点击同时保留一条行为事件。`replay.onMounted` 默认 `false`：退出保留，等待同应用、同用户的新触发独立补传；设为 `true` 后，无触发也在退出时通过 Beacon 尽力发送，未确认数据下次打开补传。录制与普通事件使用不同接口及队列；`replay.sampleRate` 按会话实际采样。SDK 默认窗口为触发前 30 秒、后 10 秒；两个 Web 示例默认开启并缩短为前 10 秒、后 5 秒，播放由管理工作台完成。小程序端没有 DOM，不执行录制。详见 [Replay 配置](packages/replay/README.md)。
 
 ## 在仓库中运行示例
 

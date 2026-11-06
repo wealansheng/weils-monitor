@@ -6,6 +6,8 @@ export interface ReplayStatus {
 
 export interface ReplayOptions {
   enabled?: boolean
+  /** Upload the rolling recording on page exit. Defaults to false (retain until a new trigger). */
+  onMounted?: boolean
   url?: string
   sampleRate?: number
   beforeErrorMs?: number
@@ -29,6 +31,10 @@ export interface ReplayOptions {
 }
 
 export interface RecordError { event_id: string; timestamp: number }
+export interface ReplayCaptureOptions { type: 'error' | 'custom'; action?: string }
+export type RecordTrigger =
+  | { type: 'error' | 'custom'; event_id: string; timestamp: number; action?: string }
+  | { type: 'pagehide'; timestamp: number }
 export interface RecordMetadata {
   app_id: string
   project_name: string
@@ -47,6 +53,10 @@ export interface RecordMetadata {
   ended_at: number
   display_start: number
   errors: RecordError[]
+  /** Absent on legacy, error-only recordings. */
+  triggers?: RecordTrigger[]
+  /** May reference a later event that released a retained recording. */
+  linked_event_ids?: string[]
   end_reason: 'window' | 'duration_limit' | 'size_limit' | 'stop' | 'pagehide' | 'recovered'
   context_missing: boolean
   raw_bytes: number
@@ -64,7 +74,7 @@ export interface RecordChunk extends RecordMetadata {
 export interface ReplayController {
   start(): Promise<void>
   stop(): Promise<void>
-  capture(errorEventId: string, timestamp?: number): Promise<void>
+  capture(eventId: string, timestamp?: number, trigger?: ReplayCaptureOptions): Promise<void>
   flush(): Promise<void>
   destroy(): Promise<void>
   subscribe(listener: (status: ReplayStatus) => void): () => void

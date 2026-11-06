@@ -1,5 +1,7 @@
 # @weils-monitor/nuxt
 
+客户端 `$monitor` 同步支持链式 `$monitor?.addReplayHandler('data-replay')`；注册属性点击后上报行为并按 Replay 窗口上传录制。`nuxtMonitor.replay.onMounted` 默认 false，退出保留至同应用、同用户新触发；true 时通过 Beacon 尽力退出上传，未确认数据下次自动补传。详见 [Replay 配置](../replay/README.md)。
+
 Nuxt 3 / Nuxt 4 监控模块。它自动安装 Vue 监控，并增加水合、服务端渲染耗时与 Nuxt 框架错误采集。
 
 ## 安装

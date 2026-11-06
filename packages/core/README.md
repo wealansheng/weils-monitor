@@ -81,6 +81,8 @@ const reporter = createReporter(myAdapter, strategy)
 
 `createMonitorCore({ url, appId, replay: { enabled: true, url: '/api/v1/records' } })` 返回的 `replay` 与 Vue/Nuxt 使用同一控制器。默认关闭；开启时创建同步错误订阅，再异步导入录制包，因此懒加载期间的受支持错误也会排队处理。直接使用 core 时仍需启动错误采集器或通过 `monitor.report()` 上报错误。
 
+core 同时导出 `addReplayHandler(attribute)`，与 `click()` 配合上报行为并触发录制；Vue 的 `monitor.addReplayHandler()` 包装此入口并返回实例。`replay.onMounted` 默认 `false`，退出保留至同应用、同用户新触发；`true` 时退出 Beacon 上传并在下次打开补传。详见 [Replay 配置](../replay/README.md)。
+
 录制只订阅规范化后的 `weils-monitor:report` 错误，关联其真实 UUID；使用自定义适配器或移除发布装饰器时，若不派发此浏览器事件，就不会自动触发录制。未提供 `sessionId` 时，启用 Replay 会生成标签页会话 ID 并复用于普通事件。
 
 SDK 自身的普通事件上报和录制上传地址会被 `isMonitorRequest()` 排除，避免把上传请求再次作为资源监控数据采集。停止采集器注册表不会停止录制，需要单独调用 `monitor.replay.stop()` 或 `destroy()`。接口、触发类型与可靠性边界见 [Replay 文档](../replay/README.md)。

@@ -1,5 +1,18 @@
 # @weils-monitor/core
 
+## 1.4.0
+
+### Minor Changes
+
+- 添加自定义录制
+
+### Patch Changes
+
+- Updated dependencies
+  - @weils-monitor/replay@1.2.0
+  - @weils-monitor/shared@1.5.0
+  - @weils-monitor/utils@1.2.2
+
 ## 1.3.2
 
 ### Patch Changes

@@ -25,6 +25,7 @@ export default defineNuxtConfig({
     replay: {
       // 示例默认开启；设置 MONITOR_REPLAY=false 可关闭录制。
       enabled: process.env.MONITOR_REPLAY !== 'false',
+      onMounted: false,
       url: '/api/records',
       sampleRate: 1,
       beforeErrorMs: 10_000,

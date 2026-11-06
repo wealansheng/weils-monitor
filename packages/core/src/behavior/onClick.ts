@@ -2,6 +2,7 @@ import type { ClickReportData } from '@weils-monitor/shared';
 import { report } from '../report';
 
 const customClickAttributes = new Set<string>();
+const customReplayAttributes = new Set<string>();
 let listening = false;
 
 /** Register an HTML attribute whose value becomes the click action. */
@@ -11,9 +12,16 @@ export const addClickHandler = (attribute: string): void => {
   customClickAttributes.add(name);
 };
 
-const getCustomClick = (target: HTMLElement): { element: HTMLElement; action: string } | null => {
+/** Register a click action that also triggers the configured replay window. */
+export const addReplayHandler = (attribute: string): void => {
+  const name = attribute.trim().toLowerCase();
+  if (!name) throw new TypeError('Replay attribute name cannot be empty');
+  customReplayAttributes.add(name);
+};
+
+const getCustomClick = (target: HTMLElement, attributes: Set<string>): { element: HTMLElement; action: string } | null => {
   for (let element: HTMLElement | null = target; element; element = element.parentElement) {
-    for (const attribute of customClickAttributes) {
+    for (const attribute of attributes) {
       const action = element.getAttribute(attribute);
       if (action) return { element, action };
     }
@@ -31,11 +39,13 @@ export const click = (): void => {
     const target = element;
     if (!target) return;
 
-    const customClick = getCustomClick(target);
+    const replayClick = getCustomClick(target, customReplayAttributes);
+    const customClick = replayClick ?? getCustomClick(target, customClickAttributes);
     const reportTarget = customClick?.element ?? target;
     const reportData: ClickReportData = {
       event_type: 'behavior',
       action: customClick?.action ?? 'click',
+      ...(replayClick ? { properties: { replay_trigger: true } } : {}),
       target: {
         selector: getCssPath(reportTarget),
         text: getSafeText(reportTarget),

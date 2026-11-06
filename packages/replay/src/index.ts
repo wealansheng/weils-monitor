@@ -1,11 +1,11 @@
 import { record } from '@rrweb/record'
 import type { eventWithTime } from '@rrweb/types'
-import type { RecordChunk, RecordError, RecordMetadata, ReplayController, ReplayOptions, ReplayStatus } from '../../shared/src/replay'
+import type { RecordChunk, RecordError, RecordTrigger, RecordMetadata, ReplayController, ReplayOptions, ReplayStatus } from '../../shared/src/replay'
 import { bytes, decode, encode, splitRecord, uuid } from './codec'
 import { sanitizeEvent, sanitizeUrl } from './privacy'
 import { ReplayStore, type Stored } from './storage'
 
-export type { RecordChunk, RecordMetadata, ReplayOptions, ReplayController, ReplayStatus } from '../../shared/src/replay'
+export type { RecordChunk, RecordMetadata, RecordTrigger, ReplayCaptureOptions, ReplayOptions, ReplayController, ReplayStatus } from '../../shared/src/replay'
 export interface RecorderOptions extends ReplayOptions {
   appId: string
   sessionId: string
@@ -16,8 +16,8 @@ export interface RecorderOptions extends ReplayOptions {
   sdkVersion?: string
 }
 interface Epoch { id: string; events: eventWithTime[]; size: number; encodedSize: number; keys: string[] }
-interface Capture { id: string; errors: RecordError[]; displayStart: number; deadline: number; limit: number; contextMissing: boolean }
-interface Checkpoint { metadata: Partial<RecordMetadata>; capture?: Capture; keys: string[] }
+interface Capture { id: string; errors: RecordError[]; triggers?: RecordTrigger[]; linkedEventIds?: string[]; displayStart: number; deadline: number; limit: number; contextMissing: boolean }
+interface Checkpoint { metadata: Partial<RecordMetadata>; capture?: Capture; keys: string[]; onMounted?: boolean; endedAt?: number; displayStart?: number; prepared?: RecordChunk[]; sealed?: boolean }
 interface Upload { chunks: RecordChunk[]; next: number; attempt: number; retryAt: number }
 const MB = 1024 * 1024
 const positive = (value: number | undefined, fallback: number): number => Number.isFinite(value) && value! > 0 ? value! : fallback
@@ -49,6 +49,11 @@ export function createRecorder(options: RecorderOptions): ReplayController {
   let started = false
   let destroyed = false
   let opened = false
+  let leaving = false
+  let suspended = false
+  let preparedExit: RecordChunk[] | undefined
+  let preparedBodies: Blob[] = []
+  let lastCheckpoint: Stored | undefined
   let releaseOwnerLock: (() => void) | undefined
   const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
   const ownerLockName = (id: string): string => `weils-replay-owner:${id}`
@@ -87,7 +92,28 @@ export function createRecorder(options: RecorderOptions): ReplayController {
     for (let i = 0; i < events.length; i++) if (events[i].type === 2 && events[i].timestamp <= displayStart) index = i > 0 && events[i - 1].type === 4 ? i - 1 : i
     return events.slice(index)
   }
-  async function persist(): Promise<void> {
+  const markers = (current: Capture): RecordTrigger[] => current.triggers ?? current.errors.map(error => ({ ...error, type: 'error' as const }))
+  function rollingCapture(endedAt: number): Capture {
+    return { id: uuid(), errors: [], triggers: [{ type: 'pagehide', timestamp: endedAt }],
+      displayStart: endedAt - before, deadline: endedAt, limit: endedAt, contextMissing: false }
+  }
+  async function makeChunks(events: eventWithTime[], current: Capture, reason: RecordMetadata['end_reason'], meta = metadata(), endedAt?: number): Promise<RecordChunk[] | undefined> {
+    const selected = selectEvents(events, current.displayStart)
+    if (!selected.some(event => event.type === 2)) {
+      notify({ type: 'dropped', recordId: current.id, message: 'No full snapshot available' }); return
+    }
+    const triggers = markers(current).map(trigger => ({ ...trigger }))
+    const endTime = Math.max(selected[selected.length - 1].timestamp, ...triggers.map(trigger => trigger.timestamp), endedAt ?? (reason === 'recovered' ? 0 : Date.now()))
+    selected.push({ type: 5, timestamp: endTime, data: { tag: 'weils:record-end', payload: { reason } } })
+    return splitRecord({ ...meta, record_id: current.id,
+      started_at: Math.min(selected[0].timestamp, ...triggers.map(trigger => trigger.timestamp)), ended_at: endTime,
+      display_start: Math.max(selected[0].timestamp, current.displayStart), errors: current.errors.map(error => ({ ...error })),
+      triggers, linked_event_ids: [...new Set([...(current.linkedEventIds ?? []), ...triggers.flatMap(trigger => 'event_id' in trigger ? [trigger.event_id] : [])])],
+      end_reason: reason, context_missing: current.contextMissing || selected[0].timestamp > current.displayStart,
+    } as Omit<RecordMetadata, 'checksum' | 'encoded_bytes' | 'raw_bytes' | 'chunk_count'>, selected)
+  }
+  async function persist(retiring = false): Promise<void> {
+    if (leaving && !retiring) return
     const entries: Stored[] = []
     if (pending.length) {
       const events = pending; const epochId = pendingEpoch
@@ -114,26 +140,41 @@ export function createRecorder(options: RecorderOptions): ReplayController {
         queueMicrotask(() => { void controller.stop().catch(() => {}) })
       }
     }
-    entries.push(entity(stateKey, 'state', { metadata: metadata(), capture, keys: epochs.flatMap(epoch => epoch.keys) } satisfies Checkpoint))
+    const endedAt = Date.now()
+    let prepared: RecordChunk[] | undefined
+    if (options.onMounted === true && !retiring && allEvents().some(event => event.type === 2)) {
+      const current = capture ? { ...capture, errors: [...capture.errors], triggers: [...markers(capture), { type: 'pagehide' as const, timestamp: endedAt }] } : rollingCapture(endedAt)
+      prepared = await makeChunks(allEvents(), current, 'pagehide', metadata(), endedAt)
+    }
+    if (leaving && !retiring) {
+      // An exit can interrupt compression. Never leave checkpoint references to uncommitted batches.
+      if (entries.length) await store.commit(entries)
+      return
+    }
+    const checkpoint = entity(stateKey, 'state', { metadata: metadata(), capture, keys: epochs.flatMap(epoch => epoch.keys),
+      onMounted: options.onMounted === true, endedAt, displayStart: endedAt - before, ...(prepared ? { prepared } : {}) } satisfies Checkpoint)
+    if (retiring) checkpoint.leaseUntil = 0
+    // Set the synchronous exit snapshot before starting the matching durable commit.
+    preparedExit = prepared
+    preparedBodies = prepared?.map(chunk => new Blob([JSON.stringify(chunk)], { type: 'application/json;charset=UTF-8' })) ?? []
+    lastCheckpoint = checkpoint
+    entries.push(checkpoint)
     await store.commit(entries, remove)
   }
   async function enqueue(events: eventWithTime[], current: Capture, reason: RecordMetadata['end_reason'], meta = metadata(), sourceStateKey = stateKey): Promise<void> {
-    const selected = selectEvents(events, current.displayStart)
-    if (!selected.some(event => event.type === 2)) {
-      notify({ type: 'dropped', recordId: current.id, message: 'No full snapshot available' }); return
-    }
-    const endTime = Math.max(selected[selected.length - 1].timestamp, ...current.errors.map(error => error.timestamp), reason === 'recovered' ? 0 : Date.now())
-    selected.push({ type: 5, timestamp: endTime, data: { tag: 'weils:record-end', payload: { reason } } })
-    const chunks = await splitRecord({ ...meta, record_id: current.id, started_at: Math.min(selected[0].timestamp, current.errors[0].timestamp),
-      ended_at: endTime,
-      display_start: Math.max(selected[0].timestamp, current.displayStart), errors: current.errors, end_reason: reason,
-      context_missing: current.contextMissing || selected[0].timestamp > current.displayStart,
-    } as Omit<RecordMetadata, 'checksum' | 'encoded_bytes' | 'raw_bytes' | 'chunk_count'>, selected)
+    const chunks = await makeChunks(events, current, reason, meta)
+    if (sourceStateKey === stateKey && leaving) return
+    if (chunks) await enqueueChunks(chunks, sourceStateKey)
+  }
+  async function enqueueChunks(chunks: RecordChunk[], sourceStateKey: string): Promise<void> {
+    const recordId = chunks[0].record_id
     const rows = await store.list()
+    if (sourceStateKey === stateKey && leaving) return
     const sourceState = rows.find(row => row.key === sourceStateKey)
-    const clearedState = sourceState ? [{ ...sourceState, data: { ...sourceState.data as Checkpoint, capture: undefined } }] : []
+    const clearedState = sourceState ? [{ ...sourceState, data: { ...sourceState.data as Checkpoint, capture: undefined, prepared: undefined, sealed: true } }] : []
+    if (sourceStateKey === stateKey) { preparedExit = undefined; preparedBodies = []; lastCheckpoint = clearedState[0] }
     // Final payload + cleared recovery marker are one commit. A crash cannot create a second variant of this recording.
-    if (rows.some(row => row.key === `upload:${current.id}`)) { await store.commit(clearedState); return }
+    if (rows.some(row => row.key === `upload:${recordId}`)) { await store.commit(clearedState); return }
     const uploads = rows.filter(row => row.kind === 'upload' && row.app === options.appId)
     const retention = positive(options.retentionMs, 86_400_000)
     const remove = uploads.filter(row => row.createdAt + retention < Date.now()).map(row => row.key)
@@ -145,27 +186,42 @@ export function createRecorder(options: RecorderOptions): ReplayController {
       remove.push(row.key); size -= (row.data as Upload).chunks[0].encoded_bytes
     }
     if (remove.length) notify({ type: 'dropped', message: `${remove.length} expired or capacity-limited recordings removed` })
-    if (size + chunks[0].encoded_bytes > maxQueue) { notify({ type: 'dropped', recordId: current.id, message: 'Upload queue full' }); return }
-    await store.commit([entity(`upload:${current.id}`, 'upload', { chunks, next: 0, attempt: 0, retryAt: 0 } satisfies Upload), ...clearedState], remove)
+    if (size + chunks[0].encoded_bytes > maxQueue) { notify({ type: 'dropped', recordId, message: 'Upload queue full' }); return }
+    await store.commit([entity(`upload:${recordId}`, 'upload', { chunks, next: 0, attempt: 0, retryAt: 0 } satisfies Upload), ...clearedState], remove)
   }
   async function finish(reason: RecordMetadata['end_reason']): Promise<void> {
-    if (!capture) return
+    if (!capture || leaving) return
     // Preserve the recovery marker until the final upload task is durably stored.
     const current = capture
     await persist()
+    if (leaving) return
     await enqueue(allEvents(), current, reason)
+    if (leaving) return
     capture = undefined
     await persist()
     void controller.flush()
   }
-  async function recover(): Promise<void> {
+  async function recover(releaseEventId?: string): Promise<void> {
     const rows = await store.list()
-    for (const row of rows.filter(row => row.kind === 'state' && row.app === options.appId && row.owner !== owner && row.leaseUntil <= Date.now())) {
+    let retainedBytes = 0
+    for (const row of rows.filter(row => row.kind === 'state' && row.app === options.appId && row.owner !== owner && (locks || row.leaseUntil <= Date.now())).sort((a, b) => b.createdAt - a.createdAt)) {
       await whenOwnerAbsent(row.owner, async () => {
-      const claimed = await store.claim(row.key, owner)
+      const checkpoint = row.data as Checkpoint
+      const size = checkpoint.keys.reduce((sum, key) => sum + String(rows.find(item => item.key === key)?.data ?? '').length, 0)
+        + (checkpoint.prepared?.[0].encoded_bytes ?? 0)
+      retainedBytes += size
+      const expired = row.createdAt + positive(options.retentionMs, 86_400_000) < Date.now()
+        || retainedBytes > positive(options.maxQueueBytes, 50 * MB)
+      if (!expired && !checkpoint.sealed && checkpoint.onMounted === false && (!releaseEventId || String(checkpoint.metadata.user_id ?? '') !== String(options.userId ?? ''))) return
+      // The acquired Web Lock proves the previous document is gone, even before its lease expires.
+      const claimed = await store.claim(row.key, owner, 30_000, !!locks)
       if (!claimed) return
       const state = claimed.data as Checkpoint
-      if (state.capture) {
+      if (state.sealed) { /* The upload and this tombstone were committed atomically. Only cleanup remains. */ }
+      else if (expired) notify({ type: 'dropped', message: 'Retained recording expired or exceeded storage capacity' })
+      else if (state.onMounted === true && state.prepared?.length) {
+        await enqueueChunks(state.prepared, row.key)
+      } else if (state.capture || state.onMounted !== undefined) {
         try {
           const events: eventWithTime[] = []
           for (const key of state.keys) {
@@ -173,7 +229,12 @@ export function createRecorder(options: RecorderOptions): ReplayController {
             if (!batch) throw new Error('Checkpoint batch missing')
             events.push(...await decode<eventWithTime[]>(batch.data as string))
           }
-          await enqueue(events, state.capture, 'recovered', state.metadata, row.key)
+          const endedAt = Math.max(state.endedAt ?? 0, events[events.length - 1]?.timestamp ?? 0)
+          const previous = state.capture ?? rollingCapture(endedAt)
+          if (!state.capture && state.displayStart !== undefined) previous.displayStart = state.displayStart
+          const current = { ...previous, linkedEventIds: [...(previous.linkedEventIds ?? []), ...(releaseEventId && state.onMounted === false ? [releaseEventId] : [])] }
+          const chunks = await makeChunks(events, current, 'recovered', state.metadata, endedAt)
+          if (chunks) await enqueueChunks(chunks, row.key)
         } catch (error) { notify({ type: 'dropped', message: `Recovery failed: ${errorMessage(error)}` }) }
       }
       await store.commit([], [row.key, ...state.keys])
@@ -186,9 +247,10 @@ export function createRecorder(options: RecorderOptions): ReplayController {
     }
   }
   async function upload(): Promise<void> {
+    if (leaving || suspended) return
     const rows = await store.list()
     for (const row of rows.filter(row => row.kind === 'upload' && row.app === options.appId)) {
-      if (destroyed) return
+      if (destroyed || leaving || suspended) return
       if (row.createdAt + positive(options.retentionMs, 86_400_000) < Date.now()) {
         await store.commit([], [row.key]); notify({ type: 'dropped', message: 'Recording expired' }); continue
       }
@@ -199,7 +261,7 @@ export function createRecorder(options: RecorderOptions): ReplayController {
       try {
         while (task.next < task.chunks.length) {
           claimed = await store.claim(row.key, owner)
-          if (!claimed || destroyed) return
+          if (!claimed || destroyed || leaving || suspended) return
           const chunk = task.chunks[task.next]
           const abort = new AbortController()
           const timeout = setTimeout(() => abort.abort(), 10_000)
@@ -226,9 +288,32 @@ export function createRecorder(options: RecorderOptions): ReplayController {
   }
   const onOnline = (): void => { void controller.flush() }
   const onVisibility = (): void => { if (document.visibilityState === 'hidden') void tasks(persist).catch(() => {}) }
-  const onPagehide = (): void => { void tasks(() => finish('pagehide')).catch(() => {}) }
+  const onPagehide = (event: PageTransitionEvent): void => {
+    if (event.persisted) { suspended = true; return }
+    if (leaving) return
+    leaving = true; started = false
+    stopRecording?.(); stopRecording = undefined
+    if (timer) clearInterval(timer)
+    timer = undefined
+    if (options.onMounted === true && preparedExit) {
+      // No asynchronous work here: compression, checksums and JSON are prepared while alive.
+      let budget = 64 * 1024
+      for (const body of preparedBodies) {
+        if (body.size > budget) break
+        try { if (!navigator.sendBeacon?.(options.url || '/api/v1/records', body)) break } catch { break }
+        budget -= body.size
+      }
+    }
+    void tasks(async () => {
+      if (options.onMounted !== true) await persist(true)
+      else if (lastCheckpoint) await store.commit([{ ...lastCheckpoint, leaseUntil: 0 }])
+      else await persist(true)
+      releaseOwnerLock?.(); releaseOwnerLock = undefined
+    }).catch(() => {})
+  }
+  const onPageshow = (event: PageTransitionEvent): void => { if (event.persisted) suspended = false }
   function emit(raw: eventWithTime): void {
-    if (destroyed) return
+    if (destroyed || leaving) return
     const event = sanitizeEvent(raw, options)
     const size = bytes(JSON.stringify(event)) + 1 // include the array separator in the raw-byte budget
     let total = epochs.reduce((sum, epoch) => sum + epoch.size, 0) + size
@@ -263,7 +348,7 @@ export function createRecorder(options: RecorderOptions): ReplayController {
   }
   const controller: ReplayController = {
     async start() {
-      if (destroyed || started || typeof window === 'undefined' || typeof document === 'undefined') return
+      if (destroyed || leaving || started || typeof window === 'undefined' || typeof document === 'undefined') return
       if (starting) return starting
       starting = (async () => {
         await holdOwnerLock()
@@ -271,6 +356,7 @@ export function createRecorder(options: RecorderOptions): ReplayController {
         if (!timer) {
           window.addEventListener('online', onOnline)
           timer = setInterval(() => {
+            if (leaving || suspended) return
             void tasks(async () => {
               if (started) {
                 await persist()
@@ -307,30 +393,40 @@ export function createRecorder(options: RecorderOptions): ReplayController {
         })
         started = true
         window.addEventListener('pagehide', onPagehide)
+        window.addEventListener('pageshow', onPageshow)
         document.addEventListener('visibilitychange', onVisibility)
         notify({ type: 'started' })
       })().finally(() => { starting = undefined })
       return starting
     },
-    async capture(eventId, timestamp = Date.now()) {
+    async capture(eventId, timestamp = Date.now(), trigger = { type: 'error' }) {
       if (starting) await starting
-      if (!started || destroyed) return
-      if (!/^[0-9a-f-]{36}$/i.test(eventId)) return
+      if (!started || destroyed || leaving || suspended) return
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId) || !Number.isSafeInteger(timestamp) || timestamp <= 0) return
       await tasks(async () => {
-        if (capture?.errors.some(error => error.event_id === eventId)) return
-        if (capture && capture.errors.length >= 1000) { await finish('size_limit'); notify({ type: 'truncated', message: 'Error marker limit reached' }) }
+        if (leaving) return
+        if (capture && markers(capture).some(marker => 'event_id' in marker && marker.event_id === eventId)) return
+        await recover(eventId)
+        const marker: RecordTrigger = { type: trigger.type, event_id: eventId, timestamp,
+          ...(trigger.type === 'custom' && trigger.action ? { action: trigger.action.slice(0, 512) } : {}) }
+        // Leave space for a 256KiB payload, error IDs and context in the 512KiB HTTP body.
+        if (capture && (markers(capture).length >= 1000 || bytes(JSON.stringify([...markers(capture), marker])) > 96 * 1024)) {
+          await finish('size_limit'); notify({ type: 'truncated', message: 'Trigger marker limit reached' })
+        }
         if (!capture) {
-          capture = { id: uuid(), errors: [], displayStart: timestamp - before,
+          capture = { id: uuid(), errors: [], triggers: [], displayStart: timestamp - before,
             deadline: Date.now() + after, limit: timestamp - before + duration,
             contextMissing: !epochs.length || epochs[0].events[0]?.timestamp > timestamp - before }
         }
-        capture.errors.push({ event_id: eventId, timestamp })
+        capture.triggers ??= markers(capture)
+        capture.triggers.push(marker)
+        if (trigger.type === 'error') capture.errors.push({ event_id: eventId, timestamp })
         capture.deadline = Math.min(capture.limit, Date.now() + after)
         await persist()
       })
     },
     async flush() {
-      if (!opened || destroyed) return
+      if (!opened || destroyed || leaving || suspended) return
       if (flushing) return flushing
       flushing = upload().catch(error => notify({ type: 'upload-error', message: errorMessage(error) })).finally(() => { flushing = undefined })
       return flushing
@@ -341,11 +437,12 @@ export function createRecorder(options: RecorderOptions): ReplayController {
       if (timer) clearInterval(timer)
       timer = undefined
       window.removeEventListener('online', onOnline); window.removeEventListener('pagehide', onPagehide)
+      window.removeEventListener('pageshow', onPageshow)
       document.removeEventListener('visibilitychange', onVisibility)
-      if (opened) {
+      if (opened && !leaving) {
         await tasks(async () => { await finish('stop'); await persist(); await store.commit([], [stateKey, ...epochs.flatMap(epoch => epoch.keys)]); epochs = []; pending = [] })
         await controller.flush()
-      }
+      } else if (opened) await chain
       notify({ type: 'stopped' })
       releaseOwnerLock?.(); releaseOwnerLock = undefined
     },

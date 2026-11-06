@@ -1,5 +1,19 @@
 # @weils-monitor/nuxt
 
+## 2.2.0
+
+### Minor Changes
+
+- 添加自定义录制
+
+### Patch Changes
+
+- Updated dependencies
+  - @weils-monitor/shared@1.5.0
+  - @weils-monitor/core@1.4.0
+  - @weils-monitor/vue@1.3.0
+  - @weils-monitor/utils@1.2.2
+
 ## 2.1.2
 
 ### Patch Changes
